@@ -33,9 +33,8 @@ class AudioManager {
     if (!this.speechSynth) return;
     const findVoice = () => {
       const voices = this.speechSynth.getVoices();
-      // Try to find an expressive voice (Hindi, Indian English, or standard English)
       this.speechVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('IN')) ||
-                         voices.find(v => v.lang.includes('en-GB') || v.lang.includes('en-US')) ||
+                         voices.find(v => v.lang.includes('en-IN') || v.lang.includes('en-GB') || v.lang.includes('en-US')) ||
                          voices[0];
     };
     findVoice();
@@ -50,7 +49,7 @@ class AudioManager {
       try {
         navigator.vibrate(ms);
       } catch (e) {
-        // Safe fallback if permission blocked
+        // Safe fallback
       }
     }
   }
@@ -59,30 +58,29 @@ class AudioManager {
   playSquelch(intensity = 1) {
     if (this.muted) return;
     const now = performance.now();
-    if (now - this.lastSquelchTime < 60) return; // Debounce for smooth performance
+    if (now - this.lastSquelchTime < 50) return;
     this.lastSquelchTime = now;
     this.ensureContext();
     if (!this.ctx) return;
 
-    this.vibrate(15);
+    this.vibrate(12);
 
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     const filter = this.ctx.createBiquadFilter();
 
-    // Squelch modulation
     osc.type = 'triangle';
-    const baseFreq = 80 + Math.random() * 70;
-    osc.frequency.setValueAtTime(baseFreq * 2.2, t);
+    const baseFreq = 85 + Math.random() * 75;
+    osc.frequency.setValueAtTime(baseFreq * 2.3, t);
     osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, t + 0.08);
 
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(600 + Math.random() * 400, t);
-    filter.Q.setValueAtTime(4 + Math.random() * 4, t);
+    filter.frequency.setValueAtTime(650 + Math.random() * 350, t);
+    filter.Q.setValueAtTime(4 + Math.random() * 3, t);
 
-    // Bubble squish noise
-    const bufferSize = this.ctx.sampleRate * 0.06;
+    // Wet bubble noise
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.06);
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -91,7 +89,7 @@ class AudioManager {
     const noise = this.ctx.createBufferSource();
     noise.buffer = noiseBuffer;
     const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.12 * intensity, t);
+    noiseGain.gain.setValueAtTime(0.14 * intensity, t);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
 
     gain.gain.setValueAtTime(0.18 * intensity, t);
@@ -113,12 +111,12 @@ class AudioManager {
   playScrape() {
     if (this.muted) return;
     const now = performance.now();
-    if (now - this.lastScrapeTime < 120) return;
+    if (now - this.lastScrapeTime < 100) return;
     this.lastScrapeTime = now;
     this.ensureContext();
     if (!this.ctx) return;
 
-    this.vibrate(20);
+    this.vibrate(18);
 
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
@@ -126,14 +124,14 @@ class AudioManager {
     const gain = this.ctx.createGain();
 
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(320 + Math.random() * 80, t);
-    osc.frequency.linearRampToValueAtTime(260, t + 0.1);
+    osc.frequency.setValueAtTime(340 + Math.random() * 90, t);
+    osc.frequency.linearRampToValueAtTime(250, t + 0.1);
 
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1400, t);
-    filter.Q.setValueAtTime(6, t);
+    filter.frequency.setValueAtTime(1500, t);
+    filter.Q.setValueAtTime(5, t);
 
-    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.setValueAtTime(0.1, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
 
     osc.connect(filter);
@@ -157,7 +155,7 @@ class AudioManager {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    const startFreq = 600 + Math.random() * 200;
+    const startFreq = 620 + Math.random() * 200;
     osc.frequency.setValueAtTime(startFreq, t);
     osc.frequency.exponentialRampToValueAtTime(startFreq * 1.6, t + 0.07);
     osc.frequency.exponentialRampToValueAtTime(startFreq * 0.9, t + 0.14);
@@ -172,14 +170,14 @@ class AudioManager {
     osc.stop(t + 0.16);
   }
 
-  // Combo / Success chime notes (pentatonic arpeggio)
+  // Combo / Success chime notes
   playChime(noteIndex = 0) {
     if (this.muted) return;
     this.ensureContext();
     if (!this.ctx) return;
 
     const t = this.ctx.currentTime;
-    const frequencies = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25]; // C D E G A C D E
+    const frequencies = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
     const freq = frequencies[noteIndex % frequencies.length];
 
     const osc = this.ctx.createOscillator();
@@ -207,10 +205,10 @@ class AudioManager {
     this.vibrate([80, 50, 120, 50, 200]);
 
     const chords = [
-      [261.63, 329.63, 392.00], // C
-      [329.63, 392.00, 523.25], // Em
-      [349.23, 440.00, 523.25], // F
-      [392.00, 493.88, 587.33, 783.99]  // G -> High G
+      [261.63, 329.63, 392.00],
+      [329.63, 392.00, 523.25],
+      [349.23, 440.00, 523.25],
+      [392.00, 493.88, 587.33, 783.99]
     ];
 
     chords.forEach((chord, i) => {
@@ -234,7 +232,7 @@ class AudioManager {
     });
   }
 
-  // Meme voice lines and punchlines
+  // Voice speech synthesis
   playMemeVoice(text, rate = 1.05, pitch = 1.1) {
     if (this.muted) return;
     if (!this.speechSynth) return;
@@ -254,7 +252,7 @@ class AudioManager {
     }
   }
 
-  // Funny soundboard punchline triggers
+  // Viral soundboard triggers
   triggerMemeSound(memeType) {
     this.ensureContext();
     switch (memeType) {
@@ -275,6 +273,16 @@ class AudioManager {
         break;
       case 'dil_toot_gaya':
         this.playMemeVoice("Breakup ho gaya? Koi tension nahi, dil me grout bhar denge!", 1.05, 1.1);
+        break;
+      case 'titanic_meme':
+        this.playMemeVoice("Captain saab, iceberg ke gap me 5 bori grout bhar denge!", 1.05, 1.1);
+        break;
+      case 'corporate_excel':
+        this.playMemeVoice("Deadline miss ho gayi? Excel sheet ke cells me grout bhar denge!", 1.05, 1.15);
+        break;
+      case 'marksheet_pass':
+        this.playMemeVoice("Physics me zero aaya tha, ab A plus topper ban gaye!", 1.1, 1.2);
+        this.playFanfare();
         break;
       default:
         this.playMemeVoice("Isme grout bhar denge!");

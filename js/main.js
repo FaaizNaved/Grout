@@ -22,6 +22,7 @@ class GroutApp {
   init() {
     this.setupEngine();
     this.setupPalette();
+    this.setupLevelSelector();
     this.setupUIListeners();
     this.loadLevel(0);
     viralManager.initSoundboard();
@@ -55,6 +56,22 @@ class GroutApp {
     });
   }
 
+  setupLevelSelector() {
+    const container = document.getElementById('levelSelectorRow');
+    if (!container) return;
+    container.innerHTML = '';
+
+    LEVELS.forEach((level, idx) => {
+      const pill = document.createElement('button');
+      pill.className = `level-pill ${idx === this.currentLevelIndex ? 'active' : ''}`;
+      pill.textContent = `L${level.id}: ${level.name.split(' (')[0]}`;
+      pill.addEventListener('click', () => {
+        this.loadLevel(idx);
+      });
+      container.appendChild(pill);
+    });
+  }
+
   loadLevel(index) {
     if (index < 0 || index >= LEVELS.length) {
       index = 0;
@@ -72,6 +89,16 @@ class GroutApp {
     this.progressFill.style.width = '0%';
     this.progressPercent.textContent = '0%';
     this.comboPill.textContent = 'x1';
+
+    // Update active level pill
+    document.querySelectorAll('.level-pill').forEach((pill, i) => {
+      if (i === index) {
+        pill.classList.add('active');
+        pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      } else {
+        pill.classList.remove('active');
+      }
+    });
 
     // Reset Tool active state
     document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
@@ -109,9 +136,10 @@ class GroutApp {
 
     const funnyVerdicts = [
       `“Thekedar fell on his knees! You solved it with pure Jugaad!”`,
-      `“Contractor refused to pay, but Mistri took 2 samosas and declared victory!”`,
+      `“Contractor refused to pay, but Babu Mistri took 2 samosas and declared victory!”`,
       `“Scientists are studying how Grout fixed this level. 10/10 Jugaad!”`,
-      `“UNESCO added your Grout work to World Wonder list!”`
+      `“UNESCO added your Grout work to the World Wonder list!”`,
+      `“Engineering degree waste, Babu Mistri grout paste best!”`
     ];
     if (verdictEl) {
       verdictEl.textContent = funnyVerdicts[Math.floor(Math.random() * funnyVerdicts.length)];
