@@ -4,26 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   
-  <title>GROUT! - The Viral "Isme Grout Bhar Denge" Tile ASMR Web Game</title>
-  <meta name="description" content="Play the viral meme game GROUT! Bathroom gaps? Crooked stairs? Broken heart? Flunked exams? Sinking Titanic? Solve life's greatest disasters with satisfying ASMR grout!">
-  <meta name="keywords" content="grout, isme grout bhar denge, tile game, asmr web game, viral meme, browser game, mistri game, satisfying tile grouting, thekedar shocked mistri rocked">
-  <meta name="author" content="Grout Team">
-  <meta name="theme-color" content="#f59e0b">
+  <title>GROUT — The Art of "Isme Grout Bhar Denge" (Tile ASMR Game)</title>
+  <meta name="description" content="An artisanal ASMR tile grouting game celebrating the legendary meme: 'Isme Grout Bhar Denge'. Fill crooked gaps with satisfying tactile paste.">
+  <meta name="keywords" content="grout, isme grout bhar denge, tile game, asmr game, viral meme, browser game, mistri jugaad, minimal web game">
+  <meta name="author" content="Studio Grout">
+  <meta name="theme-color" content="#f7f4ee">
 
-  <!-- Open Graph / Facebook / WhatsApp Preview -->
+  <!-- Google Fonts: Warm Editorial Pair (Fraunces + Plus Jakarta Sans + JetBrains Mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Open Graph / Social Preview -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="GROUT! - Isme Grout Bhar Denge 🧱">
-  <meta property="og:description" content="Tiles crooked? Breakup ho gaya? Flunked exams? 'ISME GROUT BHAR DENGE!' Play the viral ASMR game and download your Certified Mistri Diploma!">
-  <meta property="og:image" content="assets/og-preview.svg">
+  <meta property="og:title" content="GROUT — Isme Grout Bhar Denge">
+  <meta property="og:description" content="Crooked tiles? Broken stairs? Life falling apart? 'ISME GROUT BHAR DENGE!' Play the tactile ASMR web game.">
+  <meta property="og:image" content="/og-preview.svg">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GROUT! - The Viral Meme Web Game 🧱">
-  <meta name="twitter:description" content="Play the viral ASMR tile grouting game. Drag your trowel, fill the gaps, and get your Jugaad Mistri degree!">
-  <meta name="twitter:image" content="assets/og-preview.svg">
+  <meta name="twitter:title" content="GROUT — The Tile ASMR Web Game">
+  <meta name="twitter:description" content="Play the satisfying tile grouting game inspired by the viral meme. Drag your trowel, fill the gaps, and get certified.">
+  <meta name="twitter:image" content="/og-preview.svg">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
   <!-- Google AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3896262766732996" crossorigin="anonymous"></script>
@@ -32,288 +37,292 @@
 </head>
 <body>
 
-  <div class="app-container">
-    <!-- Header -->
-    <header>
-      <div class="logo-area" onclick="location.reload()">
-        <img src="assets/favicon.svg" alt="Grout Logo" class="logo-icon">
-        <div class="logo-text">
-          <h1>GROUT! <span>🧱</span></h1>
-          <p>ISME GROUT BHAR DENGE</p>
+  <div class="page-frame">
+    <!-- Minimalist Header -->
+    <header class="site-header">
+      <div class="brand" onclick="location.reload()">
+        <span class="brand-glyph">🧱</span>
+        <div class="brand-titles">
+          <span class="brand-name">GROUT</span>
+          <span class="brand-tag">Studio Jugaad • 1984</span>
         </div>
       </div>
-      <div class="header-actions">
-        <button id="btnHeaderDiploma" class="btn-icon" title="View Grout Master Diploma">
-          🎓 <span>Degree</span>
+
+      <nav class="header-nav">
+        <button id="btnHeaderDiploma" class="nav-btn" title="View Grout Master Degree">
+          <span>Diploma</span>
         </button>
-        <button id="btnOpenSoundboard" class="btn-icon" title="Meme Soundboard">
-          🔊 <span>Soundboard</span>
+        <button id="btnOpenSoundboard" class="nav-btn" title="Meme Soundboard">
+          <span>Audio Clips</span>
         </button>
-        <button id="btnMute" class="btn-icon" title="Toggle Sound">
-          🔊 <span>Mute</span>
+        <button id="btnMute" class="nav-btn nav-btn-compact" title="Mute/Unmute Audio">
+          <span id="muteLabel">Sound On</span>
         </button>
-      </div>
+      </nav>
     </header>
 
-    <!-- Top Responsive Ad Container -->
-    <div class="ad-slot-container" id="topAdSlot">
-      <span class="ad-label">Advertisement</span>
+    <!-- Top Clean Ad Container -->
+    <section class="ad-banner-strip" id="topAdSlot">
+      <div class="ad-meta-label">Advertisement</div>
       <ins class="adsbygoogle"
            style="display:block"
            data-ad-client="ca-pub-3896262766732996"
            data-ad-slot="1234567890"
            data-ad-format="horizontal"
            data-full-width-responsive="true"></ins>
-      <!-- Fallback Meme Ad -->
-      <div class="fallback-ad-content">
-        <span>🧱 <strong>Babu Mistri Tile Works:</strong> Gaps too wide? Call 1800-GROUT-BHAR-DENGE. 100% Guaranteed Jugaad!</span>
+      <div class="fallback-banner">
+        <span>Babu Mistri Tile Consultancy: <em>"No gap is too wide for 2kg of blind confidence."</em></span>
       </div>
-    </div>
+    </section>
 
-    <!-- Meme Narrative Box: Thekedar vs Babu Mistri -->
-    <section class="dialogue-card" id="dialogueCard">
-      <div class="bubble thekedar-bubble">
-        <div class="avatar-box thekedar-avatar">
-          <svg viewBox="0 0 100 100" width="46" height="46">
-            <!-- Helmet -->
-            <path d="M20,45 Q50,15 80,45 L85,50 L15,50 Z" fill="#facc15" stroke="#ca8a04" stroke-width="3"/>
-            <rect x="15" y="46" width="70" height="6" rx="3" fill="#eab308"/>
-            <!-- Face -->
-            <circle cx="50" cy="65" r="25" fill="#fca5a5" stroke="#ef4444" stroke-width="2"/>
-            <!-- Angry Eyes -->
-            <line x1="38" y1="56" x2="46" y2="60" stroke="#7f1d1d" stroke-width="3"/>
-            <line x1="62" y1="56" x2="54" y2="60" stroke="#7f1d1d" stroke-width="3"/>
-            <circle cx="42" cy="63" r="3" fill="#7f1d1d"/>
-            <circle cx="58" cy="63" r="3" fill="#7f1d1d"/>
-            <!-- Angry Open Mouth -->
-            <ellipse cx="50" cy="76" rx="8" ry="6" fill="#7f1d1d"/>
-            <!-- Sweat Drop -->
-            <path d="M72,55 Q75,60 72,64 Q69,60 72,55 Z" fill="#38bdf8"/>
-          </svg>
+    <!-- Narrative Site Inspection Report (Replaces tacky AI avatars with witty editorial report) -->
+    <section class="inspection-report">
+      <div class="report-header">
+        <div class="report-meta">
+          <span class="report-id">DISPATCH #042</span>
+          <span class="report-case">SITE ACCIDENT REPORT</span>
         </div>
-        <div>
-          <strong>Thekedar (Contractor):</strong>
-          <span id="thekedarText">“Bhai ye tiles ke beech me 2 inch ka gap kyu choda hai?! Paani andar ghusega!”</span>
-        </div>
+        <div class="badge-tag" id="levelBadgeText">LEVEL 1: ROOKIE MISTRI</div>
       </div>
-      <div class="bubble mistri-bubble">
-        <div class="avatar-box mistri-avatar">
-          <svg viewBox="0 0 100 100" width="46" height="46">
-            <!-- Orange Bandana -->
-            <path d="M22,38 Q50,22 78,38 L82,46 L18,46 Z" fill="#f97316"/>
-            <!-- Face -->
-            <circle cx="50" cy="62" r="26" fill="#fed7aa"/>
-            <!-- Meme "Deal With It" Sunglasses -->
-            <rect x="30" y="52" width="18" height="12" fill="#000000"/>
-            <rect x="52" y="52" width="18" height="12" fill="#000000"/>
-            <rect x="47" y="54" width="6" height="3" fill="#000000"/>
-            <rect x="33" y="54" width="4" height="4" fill="#ffffff"/>
-            <rect x="55" y="54" width="4" height="4" fill="#ffffff"/>
-            <!-- Smirk Smile -->
-            <path d="M40,75 Q50,84 62,75" fill="none" stroke="#9a3412" stroke-width="3" stroke-linecap="round"/>
-            <!-- Chewing Paan leaf corner -->
-            <circle cx="63" cy="74" r="3" fill="#16a34a"/>
-          </svg>
+
+      <div class="report-body">
+        <div class="speaker-row thekedar-row">
+          <span class="speaker-role">THEKEDAR (INSPECTOR)</span>
+          <p class="quote-text" id="thekedarText">“Bhai ye tiles ke beech me 2 inch ka gap kyu choda hai?! Paani andar ghusega!”</p>
         </div>
-        <div>
-          <strong>Babu Mistri (CGO):</strong>
-          <span id="mistriText">“Saab wo ventilation ke liye tha... par tension mat lo, ISME GROUT BHAR DENGE! 🧱”</span>
+        <div class="speaker-row mistri-row">
+          <span class="speaker-role">BABU MISTRI (ENGINEERING LEAD)</span>
+          <p class="quote-text punchline" id="mistriText">“Saab wo ventilation ke liye choda tha... par tension mat lo, ISME GROUT BHAR DENGE! 🧱”</p>
         </div>
       </div>
     </section>
 
     <!-- HUD Bar: Level Info & Progress -->
-    <section class="hud-bar">
-      <div class="level-badge">
-        <span class="num" id="levelNumber">LEVEL 1 / 9</span>
-        <span class="title" id="levelTitle">The Ventilation Gap</span>
+    <section class="canvas-hud">
+      <div class="hud-left">
+        <span class="hud-label" id="levelNumber">STAGE 1 / 9</span>
+        <h2 class="hud-title" id="levelTitle">The Ventilation Gap</h2>
       </div>
-      <div class="progress-wrapper">
-        <div class="progress-meta">
-          <span>GROUT FILLED</span>
-          <span id="progressPercent">0%</span>
+
+      <div class="hud-center">
+        <div class="progress-info">
+          <span class="progress-title">JOINT COVERAGE</span>
+          <span class="progress-val" id="progressPercent">0%</span>
         </div>
-        <div class="progress-track">
-          <div class="progress-fill" id="progressFill"></div>
+        <div class="meter-bar">
+          <div class="meter-fill" id="progressFill"></div>
         </div>
       </div>
-      <div class="combo-pill" id="comboPill" title="Continuous ASMR Stroke Combo">x1</div>
+
+      <div class="hud-right">
+        <div class="streak-pill" id="comboPill" title="Continuous ASMR Stroke Combo">
+          <span class="streak-label">STREAK</span>
+          <span class="streak-val">1x</span>
+        </div>
+      </div>
     </section>
 
-    <!-- Level Quick Selector Tabs -->
-    <div class="level-selector-row" id="levelSelectorRow">
+    <!-- Stage Selector Ribbon -->
+    <div class="stages-ribbon" id="levelSelectorRow">
       <!-- Generated by JS -->
     </div>
 
     <!-- Interactive Grouting Canvas Viewport -->
-    <main class="canvas-wrapper">
+    <main class="viewport-box">
       <canvas id="gameCanvas" width="600" height="480"></canvas>
     </main>
 
-    <!-- Bottom Controls & Tool Palette -->
-    <footer class="toolbar-card">
-      <div class="tool-group">
-        <button id="toolTrowel" class="tool-btn active" title="Spread Grout Paste">
-          🧱 <span>Trowel (Spread)</span>
+    <!-- Artisanal Tool Palette & Controls -->
+    <footer class="tool-deck">
+      <div class="deck-group tool-mode-selector">
+        <button id="toolTrowel" class="deck-btn active" title="Spread Grout Paste">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12,2 22,12 14,20 4,10"/>
+            <line x1="4" y1="10" x2="1" y2="13"/>
+          </svg>
+          <span>Trowel (Fill)</span>
         </button>
-        <button id="toolSponge" class="tool-btn" title="Polish & Clean Haze">
-          🧽 <span>Sponge (Polish)</span>
+        <button id="toolSponge" class="deck-btn" title="Polish & Buff Haze">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="5" width="18" height="14" rx="3"/>
+            <circle cx="8" cy="10" r="1"/>
+            <circle cx="15" cy="14" r="1.5"/>
+            <circle cx="13" cy="9" r="1"/>
+          </svg>
+          <span>Sponge (Buff)</span>
         </button>
       </div>
 
-      <div class="color-swatches" id="swatchesContainer" title="Pick Grout Color">
-        <!-- Generated by JS -->
+      <div class="deck-group color-palette-deck">
+        <span class="palette-hint">Grout:</span>
+        <div class="palette-chips" id="swatchesContainer">
+          <!-- Generated by JS -->
+        </div>
       </div>
 
-      <div class="action-buttons">
-        <button id="btnResetLevel" class="btn-secondary" title="Reset this level">
-          🔄 Reset
+      <div class="deck-group deck-actions">
+        <button id="btnResetLevel" class="deck-btn-ghost" title="Clear current work">
+          Reset
         </button>
-        <button id="btnShareWhatsApp" class="btn-secondary" title="Share with friends on WhatsApp">
-          💬 Share
+        <button id="btnShareWhatsApp" class="deck-btn-accent" title="Share with friends">
+          Share
         </button>
       </div>
     </footer>
 
-    <!-- Bottom Adhesive Banner Ad Slot -->
-    <div class="ad-slot-container" id="bottomAdSlot">
-      <span class="ad-label">Sponsored Jugaad</span>
+    <!-- Bottom Sticky Ad Placement -->
+    <section class="ad-banner-strip bottom-strip" id="bottomAdSlot">
+      <div class="ad-meta-label">Sponsored</div>
       <ins class="adsbygoogle"
            style="display:block"
            data-ad-client="ca-pub-3896262766732996"
            data-ad-slot="9876543210"
            data-ad-format="auto"
            data-full-width-responsive="true"></ins>
-      <div class="fallback-ad-content">
-        <span>⭐ <em>"Best ASMR Grout Spreading Simulator of 2026"</em> — All India Jugaad Council</span>
+      <div class="fallback-banner">
+        <span>Architectural Digest: <em>"The finest meditation simulator for frustrated homeowners."</em></span>
       </div>
-    </div>
+    </section>
+
+    <!-- Footer Colophon -->
+    <footer class="colophon">
+      <p>GROUT is an independent satirical web game based on the viral <em>"Isme Grout Bhar Denge"</em> internet meme.</p>
+      <p>Designed with natural earth pigments & honest craftsmanship. Zero artificial additives.</p>
+    </footer>
   </div>
 
-  <!-- MODAL 1: Level Victory Modal -->
-  <div class="modal-overlay" id="victoryModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 id="victoryLevelTitle">LEVEL FIXED! 🎉</h2>
-        <p>THEKEDAR SHOCKED, MISTRI ROCKED!</p>
-      </div>
-      <div class="star-rating">⭐⭐⭐</div>
-      <div class="meme-verdict" id="victoryVerdict">
+  <!-- MODAL 1: Level Completion Review -->
+  <div class="modal-backdrop" id="victoryModal">
+    <div class="modal-card">
+      <div class="card-ornament">✦ ✦ ✦</div>
+      <h3 class="modal-heading" id="victoryLevelTitle">Joints Sealed & Approved</h3>
+      <p class="modal-sub">Thekedar inspected the work. He didn't speak a word. He just walked away.</p>
+      
+      <div class="verdict-quote" id="victoryVerdict">
         “Thekedar fell on his knees! You solved it with pure Jugaad!”
       </div>
-      <div class="modal-actions">
-        <button id="btnNextLevel" class="btn-primary">
-          Next Jugaad Level ➡️
+
+      <div class="modal-btn-row">
+        <button id="btnNextLevel" class="btn-solid">
+          Next Assignment →
         </button>
-        <button id="btnVictoryWhatsApp" class="btn-whatsapp">
-          💬 Send Meme to WhatsApp Friends
+        <button id="btnVictoryWhatsApp" class="btn-outline">
+          Send to WhatsApp
         </button>
-        <button id="btnOpenDiploma" class="btn-diploma">
-          🎓 Get Your Mistri Degree Certificate
+        <button id="btnOpenDiploma" class="btn-ghost">
+          Download Certified Degree
         </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 2: Grout Master Diploma / Certificate Generator -->
-  <div class="modal-overlay" id="certificateModal">
-    <div class="modal-box" style="max-width: 680px;">
-      <div class="modal-header">
-        <h2>🎓 MISTRI DEGREE CERTIFICATE</h2>
-        <p>Officially Certified by All India Jugaad Federation</p>
+  <!-- MODAL 2: Grout Master Diploma / Letterpress Certificate -->
+  <div class="modal-backdrop" id="certificateModal">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-card-header">
+        <h3 class="modal-heading">Council of Jugaad Diploma</h3>
+        <p class="modal-sub">Official credential in Universal Grout Application</p>
       </div>
-      <canvas id="certificateCanvas"></canvas>
-      <div class="name-input-group">
-        <input type="text" id="certNameInput" placeholder="Enter Your Name / Nickname" value="Senior Mistri">
-        <button id="btnDownloadDiploma" class="btn-primary">⬇️ Download PNG</button>
+
+      <div class="diploma-frame">
+        <canvas id="certificateCanvas"></canvas>
       </div>
-      <div class="modal-actions">
-        <button id="btnCopyLink" class="btn-secondary">
-          🔗 Copy Game Link
+
+      <div class="diploma-input-bar">
+        <input type="text" id="certNameInput" placeholder="Enter Recipient Name" value="Senior Babu Mistri">
+        <button id="btnDownloadDiploma" class="btn-solid">Download Certificate (PNG)</button>
+      </div>
+
+      <div class="modal-btn-row modal-btn-row-alt">
+        <button id="btnCopyLink" class="btn-ghost">
+          Copy Share Link
         </button>
-        <button id="btnShareTwitter" class="btn-secondary">
-          🐦 Post on X (Twitter)
+        <button id="btnShareTwitter" class="btn-ghost">
+          Post on X / Twitter
         </button>
-        <button id="btnCloseDiploma" class="btn-secondary">
-          ❌ Back to Game
+        <button id="btnCloseDiploma" class="btn-outline">
+          Return to Studio
         </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 3: Viral Meme Soundboard -->
-  <div class="modal-overlay" id="soundboardModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2>🔊 VIRAL SOUNDBOARD</h2>
-        <p>Tap to play iconic meme punchlines!</p>
+  <!-- MODAL 3: Viral Soundboard -->
+  <div class="modal-backdrop" id="soundboardModal">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h3 class="modal-heading">Audio Soundboard</h3>
+        <p class="modal-sub">Iconic voice clips synthesized directly via Web Audio</p>
       </div>
-      <div class="soundboard-grid">
-        <button class="sound-btn" data-sound="grout_bhar_denge">
-          <span>🧱</span>
-          <span>"Isme Grout Bhar Denge!"</span>
+
+      <div class="sound-grid">
+        <button class="sound-chip" data-sound="grout_bhar_denge">
+          <span class="chip-title">"Isme Grout Bhar Denge!"</span>
+          <span class="chip-desc">The original defense</span>
         </button>
-        <button class="sound-btn" data-sound="mistri_op">
-          <span>🔥</span>
-          <span>"Thekedar Shocked, Mistri Rocked!"</span>
+        <button class="sound-chip" data-sound="mistri_op">
+          <span class="chip-title">"Thekedar Shocked, Mistri Rocked!"</span>
+          <span class="chip-desc">Victory fanfare</span>
         </button>
-        <button class="sound-btn" data-sound="dil_toot_gaya">
-          <span>💔</span>
-          <span>"Dil Me Grout Bhar Do!"</span>
+        <button class="sound-chip" data-sound="dil_toot_gaya">
+          <span class="chip-title">"Dil Me Grout Bhar Do"</span>
+          <span class="chip-desc">Breakup cure</span>
         </button>
-        <button class="sound-btn" data-sound="titanic_meme">
-          <span>🚢</span>
-          <span>"Titanic Dub Raha? Grout Bhar Do!"</span>
+        <button class="sound-chip" data-sound="titanic_meme">
+          <span class="chip-title">"Titanic Iceberg Crack"</span>
+          <span class="chip-desc">Maritime rescue</span>
         </button>
-        <button class="sound-btn" data-sound="corporate_excel">
-          <span>📊</span>
-          <span>"Excel Sheet Me Grout Bhar Denge"</span>
+        <button class="sound-chip" data-sound="corporate_excel">
+          <span class="chip-title">"Excel Sheet Grout"</span>
+          <span class="chip-desc">Production emergency</span>
         </button>
-        <button class="sound-btn" data-sound="marksheet_pass">
-          <span>💯</span>
-          <span>"Marksheet: Zero to A+ Topper"</span>
+        <button class="sound-chip" data-sound="marksheet_pass">
+          <span class="chip-title">"Zero to A+ Topper"</span>
+          <span class="chip-desc">Academic engineering</span>
         </button>
-        <button class="sound-btn" data-sound="kya_karega">
-          <span>😱</span>
-          <span>"Bhai Ye Kya Bana Diya?!"</span>
+        <button class="sound-chip" data-sound="kya_karega">
+          <span class="chip-title">"Bhai Ye Kya Bana Diya?!"</span>
+          <span class="chip-desc">Inspector's despair</span>
         </button>
-        <button class="sound-btn" data-sound="satisfying_pop">
-          <span>✨</span>
-          <span>"Satisfying Sponge Squeak"</span>
+        <button class="sound-chip" data-sound="satisfying_pop">
+          <span class="chip-title">"Sponge Buff Squeak"</span>
+          <span class="chip-desc">Pure ASMR</span>
         </button>
       </div>
-      <button id="btnCloseSoundboard" class="btn-secondary" style="margin-top: 10px;">
+
+      <button id="btnCloseSoundboard" class="btn-outline" style="margin-top: 14px; width: 100%;">
         Close Soundboard
       </button>
     </div>
   </div>
 
-  <!-- MODAL 4: Level Transition Ad Container -->
-  <div class="modal-overlay" id="adTransitionModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2>🧱 SPONSORED JUGAAD BREAK</h2>
-        <p>Preparing Next Broken Level... (<span id="adCountdownTimer">3s</span>)</p>
-      </div>
-      <div class="ad-slot-container" style="min-height: 140px;">
+  <!-- MODAL 4: Level Transition Interstitial Ad Container -->
+  <div class="modal-backdrop" id="adTransitionModal">
+    <div class="modal-card">
+      <div class="card-ornament">SPONSORED</div>
+      <h3 class="modal-heading">Preparing Next Assignment</h3>
+      <p class="modal-sub">Resuming in <span id="adCountdownTimer">3s</span>...</p>
+
+      <div class="ad-transition-box">
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-3896262766732996"
              data-ad-slot="5555555555"
              data-ad-format="rectangle"
              data-full-width-responsive="true"></ins>
-        <div class="fallback-ad-content">
-          <span>🏗️ <strong>Pro Tip:</strong> There is no problem in the universe that cannot be solved by 2 bags of Grout and excessive confidence!</span>
+        <div class="fallback-banner">
+          <span>Pro Tip: <em>"Measure once, cut twice, fill the remaining four inches with grout."</em></span>
         </div>
       </div>
-      <button id="adSkipButton" class="btn-primary" style="opacity: 0.5;">
-        Loading Level...
+
+      <button id="adSkipButton" class="btn-solid" style="opacity: 0.5;">
+        Continue
       </button>
     </div>
   </div>
 
   <!-- Toast Notification -->
-  <div class="toast-msg" id="toast">Notice message</div>
+  <div class="toast-card" id="toast">Notice message</div>
 
   <!-- Script Modules -->
   <script type="module" src="js/main.js"></script>

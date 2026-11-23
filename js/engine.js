@@ -1,4 +1,4 @@
-// Canvas ASMR Grouting Engine with drag physics, particle effects & coverage tracking
+// Canvas ASMR Grouting Engine with natural tactile physics & warm rendering
 
 import { audio } from './audio.js';
 
@@ -13,29 +13,26 @@ export class GroutEngine {
     this.gaps = [];
     this.samplePoints = [];
     this.filledPointsCount = 0;
-    this.tool = 'trowel'; // 'trowel' or 'sponge'
-    this.groutColor = '#f59e0b';
-    this.groutBorder = '#d97706';
+    this.tool = 'trowel';
+    this.groutColor = '#B45309';
+    this.groutBorder = '#92400E';
 
     // Drag tracking
     this.isDragging = false;
     this.lastPos = null;
     this.currentPos = { x: 0, y: 0 };
     this.toolAngle = 0;
-    this.strokes = []; // Array of drawn paths
+    this.strokes = [];
     this.currentStroke = null;
 
-    // Particles
+    // Particles (Natural plaster & stone dust)
     this.particles = [];
     this.floatingTexts = [];
 
     // Combo system
     this.combo = 0;
     this.comboTimer = null;
-    this.totalScore = 0;
     this.isCompleted = false;
-
-    this.spongeCleanliness = 100; // 0 to 100% polished
 
     this.setupListeners();
     this.handleResize();
@@ -49,14 +46,12 @@ export class GroutEngine {
     const rect = this.canvas.parentElement.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     
-    // Set display size
     const width = Math.min(rect.width, 720);
-    const height = Math.min(rect.height || width * 0.9, 640);
+    const height = Math.min(rect.height || width * 0.85, 600);
     
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
 
-    // Set actual canvas size in memory
     this.canvas.width = width * dpr;
     this.canvas.height = height * dpr;
     this.ctx.scale(dpr, dpr);
@@ -71,7 +66,8 @@ export class GroutEngine {
 
   loadLevel(level) {
     this.currentLevel = level;
-    this.groutColor = level.groutColor || '#f59e0b';
+    this.groutColor = level.groutColor || '#B45309';
+    this.groutBorder = level.groutBorder || '#92400E';
     this.isCompleted = false;
     this.strokes = [];
     this.particles = [];
@@ -86,8 +82,7 @@ export class GroutEngine {
     this.samplePoints = [];
     this.filledPointsCount = 0;
 
-    // Discretize all gap lines into sample points
-    const step = 8; // Sample density
+    const step = 8;
     this.gaps.forEach((gap, gapIdx) => {
       const dx = gap.x2 - gap.x1;
       const dy = gap.y2 - gap.y1;
@@ -148,7 +143,7 @@ export class GroutEngine {
         this.currentStroke = {
           color: this.groutColor,
           borderColor: this.groutBorder,
-          width: this.currentLevel ? (this.currentLevel.gapWidth || 26) : 26,
+          width: this.currentLevel ? (this.currentLevel.gapWidth || 24) : 24,
           points: [pos]
         };
         this.strokes.push(this.currentStroke);
@@ -173,7 +168,7 @@ export class GroutEngine {
           
           if (this.tool === 'trowel') {
             this.currentStroke.points.push(pos);
-            audio.playSquelch(Math.min(dist / 10, 2));
+            audio.playSquelch(Math.min(dist / 10, 1.8));
             this.spawnSquelchParticles(pos.x, pos.y);
           } else if (this.tool === 'sponge') {
             audio.playSponge();
@@ -186,7 +181,7 @@ export class GroutEngine {
       }
     };
 
-    const onEnd = (e) => {
+    const onEnd = () => {
       if (this.isDragging) {
         this.isDragging = false;
         this.lastPos = null;
@@ -205,65 +200,66 @@ export class GroutEngine {
   }
 
   spawnSquelchParticles(x, y) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 1 + Math.random() * 3;
+      const speed = 0.8 + Math.random() * 2;
       this.particles.push({
-        x: x + (Math.random() - 0.5) * 12,
-        y: y + (Math.random() - 0.5) * 12,
+        x: x + (Math.random() - 0.5) * 8,
+        y: y + (Math.random() - 0.5) * 8,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        radius: 2 + Math.random() * 3.5,
+        radius: 1.5 + Math.random() * 2,
         color: this.groutColor,
-        alpha: 0.9,
+        alpha: 0.8,
         decay: 0.04
       });
     }
   }
 
   spawnSpongeSparkles(x, y) {
-    for (let i = 0; i < 4; i++) {
+    // Soft limestone buff powder
+    for (let i = 0; i < 3; i++) {
       this.particles.push({
-        x: x + (Math.random() - 0.5) * 30,
-        y: y + (Math.random() - 0.5) * 30,
-        vx: (Math.random() - 0.5) * 2,
-        vy: -1 - Math.random() * 2,
-        radius: 2 + Math.random() * 2.5,
-        color: '#ffffff',
-        alpha: 1,
-        decay: 0.05,
+        x: x + (Math.random() - 0.5) * 20,
+        y: y + (Math.random() - 0.5) * 20,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: -0.5 - Math.random() * 1.5,
+        radius: 1.2 + Math.random() * 1.8,
+        color: '#FAF8F5',
+        alpha: 0.85,
+        decay: 0.04,
         isSparkle: true
       });
     }
   }
 
   spawnConfetti() {
-    const colors = ['#f59e0b', '#ec4899', '#38bdf8', '#10b981', '#a855f7', '#fbbf24'];
-    for (let i = 0; i < 80; i++) {
+    // Natural celebratory earth pigments
+    const colors = ['#9A3412', '#B45309', '#D97706', '#2D6A4F', '#F5F2EB', '#78716C'];
+    for (let i = 0; i < 60; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 3 + Math.random() * 8;
+      const speed = 2 + Math.random() * 6;
       this.particles.push({
         x: this.width / 2,
         y: this.height / 2,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 3,
-        radius: 4 + Math.random() * 5,
+        vy: Math.sin(angle) * speed - 2.5,
+        radius: 3 + Math.random() * 3.5,
         color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: 1,
-        decay: 0.015,
-        gravity: 0.15
+        alpha: 0.9,
+        decay: 0.018,
+        gravity: 0.12
       });
     }
   }
 
-  addFloatingText(text, x, y, color = '#fbbf24') {
+  addFloatingText(text, x, y) {
     this.floatingTexts.push({
       text,
       x,
       y,
-      color,
       alpha: 1,
-      vy: -1.5
+      vy: -1.2
     });
   }
 
@@ -271,7 +267,7 @@ export class GroutEngine {
     if (this.isCompleted) return;
 
     let newlyFilled = 0;
-    const thresholdDist = this.tool === 'sponge' ? 40 : 28;
+    const thresholdDist = this.tool === 'sponge' ? 38 : 26;
 
     this.samplePoints.forEach(pt => {
       if (!pt.filled) {
@@ -294,14 +290,14 @@ export class GroutEngine {
       if (this.combo > 0 && this.combo % 12 === 0) {
         const chimeNote = Math.min(Math.floor(this.combo / 12), 7);
         audio.playChime(chimeNote);
-        const praiseList = ["SQUISH! 🧱", "SMOOTH! ✨", "MISTRI OP! 🔥", "PERFECT GROUT! 💯"];
+        const praiseList = ["PERFECT JOINT", "SMOOTH SPREAD", "MISTRI APPROVED", "TRUE JUGAAD"];
         const praise = praiseList[Math.floor(Math.random() * praiseList.length)];
-        this.addFloatingText(`${praise} x${Math.min(this.combo, 10)}`, pos.x, pos.y - 20);
+        this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, pos.x, pos.y - 20);
       }
 
       const total = this.samplePoints.length;
       const coverage = total > 0 ? (this.filledPointsCount / total) * 100 : 0;
-      const target = this.currentLevel ? (this.currentLevel.targetFill || 88) : 88;
+      const target = this.currentLevel ? (this.currentLevel.targetFill || 84) : 84;
 
       if (this.onProgress) {
         this.onProgress(Math.min(coverage, 100), this.combo);
@@ -325,33 +321,15 @@ export class GroutEngine {
     ctx.beginPath();
     const topCurveHeight = height * 0.3;
     ctx.moveTo(x, y + topCurveHeight);
-    // Left curve
-    ctx.bezierCurveTo(
-      x, y, 
-      x - width / 2, y, 
-      x - width / 2, y + topCurveHeight
-    );
-    ctx.bezierCurveTo(
-      x - width / 2, y + (height + topCurveHeight) / 2, 
-      x, y + (height + topCurveHeight) / 2, 
-      x, y + height
-    );
-    // Right curve
-    ctx.bezierCurveTo(
-      x, y + (height + topCurveHeight) / 2, 
-      x + width / 2, y + (height + topCurveHeight) / 2, 
-      x + width / 2, y + topCurveHeight
-    );
-    ctx.bezierCurveTo(
-      x + width / 2, y, 
-      x, y, 
-      x, y + topCurveHeight
-    );
+    ctx.bezierCurveTo(x, y, x - width / 2, y, x - width / 2, y + topCurveHeight);
+    ctx.bezierCurveTo(x - width / 2, y + (height + topCurveHeight) / 2, x, y + (height + topCurveHeight) / 2, x, y + height);
+    ctx.bezierCurveTo(x, y + (height + topCurveHeight) / 2, x + width / 2, y + (height + topCurveHeight) / 2, x + width / 2, y + topCurveHeight);
+    ctx.bezierCurveTo(x + width / 2, y, x, y, x, y + topCurveHeight);
     ctx.closePath();
-    ctx.fillStyle = '#f43f5e';
+    ctx.fillStyle = '#9F1239'; // Deep Rose Clay
     ctx.fill();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#e11d48';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#881337';
     ctx.stroke();
     ctx.restore();
   }
@@ -360,73 +338,70 @@ export class GroutEngine {
     const { ctx, width, height } = this;
     if (!ctx || !width || !height) return;
 
-    // Clear background
-    ctx.fillStyle = '#0f172a';
+    // Substrate Stone Background
+    ctx.fillStyle = '#1C1917';
     ctx.fillRect(0, 0, width, height);
 
-    // Draw Substrate / Mortar bed pattern
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(10, 10, width - 20, height - 20);
+    // Bed Cavity
+    ctx.fillStyle = '#292524';
+    ctx.fillRect(8, 8, width - 16, height - 16);
 
-    // If level is Broken Heart
+    // Render Tiles
     if (this.currentLevel && this.currentLevel.isHeartShape) {
-      this.drawHeart(ctx, width / 2, height / 2 - height * 0.35, width * 0.7, height * 0.65);
+      this.drawHeart(ctx, width / 2, height / 2 - height * 0.35, width * 0.68, height * 0.64);
     } else if (this.currentLevel && this.currentLevel.tiles) {
-      // Draw standard tiles
       const tiles = this.currentLevel.tiles(width, height);
-      tiles.forEach((tile, idx) => {
-        // Tile drop shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.fillRect(tile.x + 4, tile.y + 4, tile.w, tile.h);
+      tiles.forEach((tile) => {
+        // Natural soft tile drop shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(tile.x + 3, tile.y + 3, tile.w, tile.h);
 
-        // Tile body
-        ctx.fillStyle = this.currentLevel.tileColor || '#f8fafc';
+        // Tile body (matte limestone/porcelain finish)
+        ctx.fillStyle = this.currentLevel.tileColor || '#FAF8F5';
         ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
 
-        // Subtle tile glossy bevel
+        // Subtle matte bevel
         const grad = ctx.createLinearGradient(tile.x, tile.y, tile.x + tile.w, tile.y + tile.h);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
-        grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0.15)');
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
         ctx.fillStyle = grad;
         ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
 
         // Border
-        ctx.strokeStyle = this.currentLevel.tileBorder || '#cbd5e1';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = this.currentLevel.tileBorder || '#E5E0D8';
+        ctx.lineWidth = 1.5;
         ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
 
-        // Tile label / branding
+        // Architectural specification text on tile
         if (tile.label) {
-          ctx.font = '11px sans-serif';
-          ctx.fillStyle = '#64748b';
+          ctx.font = '500 10px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#78716C';
           ctx.textAlign = 'center';
           ctx.fillText(tile.label, tile.x + tile.w / 2, tile.y + tile.h / 2);
         }
       });
     }
 
-    // Draw unfilled gaps (the dark recessed crevices where grout is missing)
+    // Draw Unfilled Gap Cavities
     this.gaps.forEach(gap => {
       ctx.beginPath();
       ctx.moveTo(gap.x1, gap.y1);
       ctx.lineTo(gap.x2, gap.y2);
-      ctx.strokeStyle = '#020617';
-      ctx.lineWidth = gap.width || 26;
+      ctx.strokeStyle = '#141211'; // Deep recessed cavity
+      ctx.lineWidth = gap.width || 24;
       ctx.lineCap = 'round';
       ctx.stroke();
 
-      // Shadow in gap
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.lineWidth = (gap.width || 26) * 0.5;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.lineWidth = (gap.width || 24) * 0.5;
       ctx.stroke();
     });
 
-    // Draw Grout Strokes (Satisfying wet paste)
+    // Draw Satin Grout Strokes
     this.strokes.forEach(stroke => {
       if (stroke.points.length < 2) return;
 
-      // Outer grout border / thickness
+      // Outer joint border
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
       for (let i = 1; i < stroke.points.length; i++) {
@@ -435,21 +410,21 @@ export class GroutEngine {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.strokeStyle = stroke.borderColor;
-      ctx.lineWidth = stroke.width + 4;
+      ctx.lineWidth = stroke.width + 2;
       ctx.stroke();
 
-      // Main vibrant grout paste
+      // Main paste
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.width;
       ctx.stroke();
 
-      // Specular highlight line (wet ASMR shine)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = stroke.width * 0.25;
+      // Soft natural satin surface highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = stroke.width * 0.28;
       ctx.stroke();
     });
 
-    // Draw Particles
+    // Draw Plaster & Powder Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
@@ -465,33 +440,17 @@ export class GroutEngine {
       ctx.save();
       ctx.globalAlpha = p.alpha;
       ctx.fillStyle = p.color;
-
-      if (p.isSparkle) {
-        // Star sparkle
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(p.x - p.radius * 2, p.y);
-        ctx.lineTo(p.x + p.radius * 2, p.y);
-        ctx.moveTo(p.x, p.y - p.radius * 2);
-        ctx.lineTo(p.x, p.y + p.radius * 2);
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 
-    // Draw Floating Texts
+    // Draw Floating Achievement Labels
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
       const ft = this.floatingTexts[i];
       ft.y += ft.vy;
-      ft.alpha -= 0.02;
+      ft.alpha -= 0.025;
 
       if (ft.alpha <= 0) {
         this.floatingTexts.splice(i, 1);
@@ -500,58 +459,54 @@ export class GroutEngine {
 
       ctx.save();
       ctx.globalAlpha = ft.alpha;
-      ctx.font = 'bold 15px -apple-system, sans-serif';
-      ctx.fillStyle = ft.color;
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 6;
+      ctx.font = '600 11px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#F5F1E8';
       ctx.textAlign = 'center';
       ctx.fillText(ft.text, ft.x, ft.y);
       ctx.restore();
     }
 
-    // Draw Tool Cursor
+    // Handcrafted Masonry Tool Cursor
     if (this.currentPos) {
       ctx.save();
       ctx.translate(this.currentPos.x, this.currentPos.y);
       ctx.rotate(this.toolAngle);
 
       if (this.tool === 'trowel') {
-        // Masonry Trowel
-        ctx.fillStyle = '#cbd5e1';
-        ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 2;
+        // Steel trowel blade with wood handle
+        ctx.fillStyle = '#D6D3D1';
+        ctx.strokeStyle = '#57534E';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(15, 0);
-        ctx.lineTo(-20, -18);
-        ctx.lineTo(-24, 18);
+        ctx.moveTo(14, 0);
+        ctx.lineTo(-18, -16);
+        ctx.lineTo(-22, 16);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Grout paste dollop on trowel blade
+        // Grout paste dollop on blade
         ctx.fillStyle = this.groutColor;
         ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
         ctx.fill();
 
-        // Handle
-        ctx.fillStyle = '#f97316';
-        ctx.fillRect(-36, -4, 14, 8);
+        // Wood turned handle
+        ctx.fillStyle = '#78350F';
+        ctx.fillRect(-34, -4, 12, 8);
       } else {
-        // Sponge Tool
-        ctx.fillStyle = '#fef08a';
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 2;
-        ctx.fillRect(-18, -14, 36, 28);
-        ctx.strokeRect(-18, -14, 36, 28);
+        // Natural sea sponge block
+        ctx.fillStyle = '#E7E3DB';
+        ctx.strokeStyle = '#D6CEBF';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(-16, -12, 32, 24);
+        ctx.strokeRect(-16, -12, 32, 24);
 
-        // Sponge pores
-        ctx.fillStyle = '#eab308';
+        ctx.fillStyle = '#C4BEB3';
         ctx.beginPath();
-        ctx.arc(-8, -4, 2, 0, Math.PI * 2);
-        ctx.arc(6, 4, 3, 0, Math.PI * 2);
-        ctx.arc(4, -6, 2, 0, Math.PI * 2);
-        ctx.arc(-6, 6, 2.5, 0, Math.PI * 2);
+        ctx.arc(-6, -3, 2, 0, Math.PI * 2);
+        ctx.arc(6, 4, 2.5, 0, Math.PI * 2);
+        ctx.arc(3, -5, 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();

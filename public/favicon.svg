@@ -1,40 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="tileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#0284c7"/>
+      <stop offset="0%" stop-color="#FAF8F5"/>
+      <stop offset="100%" stop-color="#E5E0D8"/>
     </linearGradient>
     <linearGradient id="trowelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e2e8f0"/>
-      <stop offset="100%" stop-color="#94a3b8"/>
+      <stop offset="0%" stop-color="#E7E5E4"/>
+      <stop offset="100%" stop-color="#A8A29E"/>
     </linearGradient>
     <linearGradient id="groutGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#f59e0b"/>
-      <stop offset="50%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#d97706"/>
+      <stop offset="0%" stop-color="#9A3412"/>
+      <stop offset="50%" stop-color="#B45309"/>
+      <stop offset="100%" stop-color="#7C2D12"/>
     </linearGradient>
   </defs>
   
-  <!-- Background Tile Grids -->
-  <rect width="100" height="100" rx="20" fill="#0f172a"/>
+  <!-- Warm Charcoal Frame -->
+  <rect width="100" height="100" rx="18" fill="#1C1917"/>
   
-  <!-- Tiles -->
-  <rect x="8" y="8" width="38" height="38" rx="6" fill="url(#tileGrad)"/>
-  <rect x="54" y="8" width="38" height="38" rx="6" fill="url(#tileGrad)"/>
-  <rect x="8" y="54" width="38" height="38" rx="6" fill="url(#tileGrad)"/>
-  <rect x="54" y="54" width="38" height="38" rx="6" fill="url(#tileGrad)"/>
+  <!-- Matte Limestone Tiles -->
+  <rect x="10" y="10" width="36" height="36" rx="4" fill="url(#tileGrad)" stroke="#D6CEBF" stroke-width="1.5"/>
+  <rect x="54" y="10" width="36" height="36" rx="4" fill="url(#tileGrad)" stroke="#D6CEBF" stroke-width="1.5"/>
+  <rect x="10" y="54" width="36" height="36" rx="4" fill="url(#tileGrad)" stroke="#D6CEBF" stroke-width="1.5"/>
+  <rect x="54" y="54" width="36" height="36" rx="4" fill="url(#tileGrad)" stroke="#D6CEBF" stroke-width="1.5"/>
   
-  <!-- Grout Lines (Gap filled with golden/creamy grout) -->
-  <rect x="46" y="8" width="8" height="84" rx="4" fill="url(#groutGrad)"/>
-  <rect x="8" y="46" width="84" height="8" rx="4" fill="url(#groutGrad)"/>
+  <!-- Warm Terracotta Grout Fill Lines -->
+  <rect x="46" y="10" width="8" height="80" rx="3" fill="url(#groutGrad)"/>
+  <rect x="10" y="46" width="80" height="8" rx="3" fill="url(#groutGrad)"/>
 
   <!-- Trowel Tool -->
-  <path d="M50 20 L75 45 L62 58 L37 33 Z" fill="url(#trowelGrad)" stroke="#1e293b" stroke-width="2"/>
-  <circle cx="56" cy="39" r="3" fill="#475569"/>
-  <!-- Handle -->
-  <path d="M62 58 L82 78" stroke="#f97316" stroke-width="7" stroke-linecap="round"/>
-  <path d="M72 68 L85 81" stroke="#ea580c" stroke-width="7" stroke-linecap="round"/>
-  
-  <!-- Sparkle of clean grout -->
-  <circle cx="50" cy="50" r="4" fill="#ffffff"/>
+  <path d="M48 24 L70 46 L58 58 L36 36 Z" fill="url(#trowelGrad)" stroke="#44403C" stroke-width="1.5"/>
+  <circle cx="53" cy="41" r="2.5" fill="#78716C"/>
+  <!-- Wood Handle -->
+  <path d="M58 58 L76 76" stroke="#78350F" stroke-width="6" stroke-linecap="round"/>
 </svg>

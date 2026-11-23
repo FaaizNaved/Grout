@@ -64,7 +64,7 @@ class GroutApp {
     LEVELS.forEach((level, idx) => {
       const pill = document.createElement('button');
       pill.className = `level-pill ${idx === this.currentLevelIndex ? 'active' : ''}`;
-      pill.textContent = `L${level.id}: ${level.name.split(' (')[0]}`;
+      pill.textContent = `${level.id}. ${level.name.split(' (')[0]}`;
       pill.addEventListener('click', () => {
         this.loadLevel(idx);
       });
@@ -80,15 +80,26 @@ class GroutApp {
     const level = LEVELS[index];
 
     // Update level HUD
-    document.getElementById('levelNumber').textContent = `LEVEL ${level.id} / ${LEVELS.length}`;
-    document.getElementById('levelTitle').textContent = level.name;
-    document.getElementById('thekedarText').textContent = level.thekedarQuote;
-    document.getElementById('mistriText').textContent = level.mistriQuote;
+    const levelNumEl = document.getElementById('levelNumber');
+    if (levelNumEl) levelNumEl.textContent = `STAGE ${level.id} / ${LEVELS.length}`;
+
+    const levelTitleEl = document.getElementById('levelTitle');
+    if (levelTitleEl) levelTitleEl.textContent = level.name;
+
+    const levelBadgeEl = document.getElementById('levelBadgeText');
+    if (levelBadgeEl) levelBadgeEl.textContent = level.badge.toUpperCase();
+
+    const thekedarTextEl = document.getElementById('thekedarText');
+    if (thekedarTextEl) thekedarTextEl.textContent = level.thekedarQuote;
+
+    const mistriTextEl = document.getElementById('mistriText');
+    if (mistriTextEl) mistriTextEl.textContent = level.mistriQuote;
     
     // Reset progress HUD
     this.progressFill.style.width = '0%';
     this.progressPercent.textContent = '0%';
-    this.comboPill.textContent = 'x1';
+    const streakValEl = this.comboPill.querySelector('.streak-val');
+    if (streakValEl) streakValEl.textContent = '1x';
 
     // Update active level pill
     document.querySelectorAll('.level-pill').forEach((pill, i) => {
@@ -101,7 +112,7 @@ class GroutApp {
     });
 
     // Reset Tool active state
-    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.deck-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('toolTrowel').classList.add('active');
 
     // Load into engine
@@ -115,31 +126,28 @@ class GroutApp {
     const formatted = Math.min(Math.round(coverage), 100);
     this.progressFill.style.width = `${formatted}%`;
     this.progressPercent.textContent = `${formatted}%`;
-    this.comboPill.textContent = `x${Math.min(combo, 10)}`;
 
-    if (combo > 3) {
-      this.comboPill.style.transform = 'scale(1.15)';
-      setTimeout(() => {
-        this.comboPill.style.transform = 'scale(1)';
-      }, 150);
+    const streakValEl = this.comboPill.querySelector('.streak-val');
+    if (streakValEl) {
+      streakValEl.textContent = `${Math.min(combo, 10)}x`;
     }
   }
 
-  onComplete(level, coverage) {
+  onComplete(level) {
     const victoryModal = document.getElementById('victoryModal');
     const verdictEl = document.getElementById('victoryVerdict');
     const victoryLevelTitle = document.getElementById('victoryLevelTitle');
 
     if (victoryLevelTitle) {
-      victoryLevelTitle.textContent = `${level.name} FIXED!`;
+      victoryLevelTitle.textContent = `${level.name} Approved`;
     }
 
     const funnyVerdicts = [
-      `“Thekedar fell on his knees! You solved it with pure Jugaad!”`,
-      `“Contractor refused to pay, but Babu Mistri took 2 samosas and declared victory!”`,
-      `“Scientists are studying how Grout fixed this level. 10/10 Jugaad!”`,
-      `“UNESCO added your Grout work to the World Wonder list!”`,
-      `“Engineering degree waste, Babu Mistri grout paste best!”`
+      `“Thekedar inspected the joint with a magnifying glass. He sighed, accepted defeat, and signed off.”`,
+      `“Contractor refused to pay cash, but Babu Mistri accepted two hot samosas and declared victory.”`,
+      `“Structural engineers were baffled. Grout achieved what modern physics deemed impossible.”`,
+      `“Archaeologists cataloged your work under 'Classical 2026 Jugaad Renaissance'.”`,
+      `“Engineering degrees were questioned. Babu Mistri's trowel was officially consecrated.”`
     ];
     if (verdictEl) {
       verdictEl.textContent = funnyVerdicts[Math.floor(Math.random() * funnyVerdicts.length)];
@@ -151,13 +159,13 @@ class GroutApp {
   setupUIListeners() {
     // Tools
     document.getElementById('toolTrowel').addEventListener('click', (e) => {
-      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
       e.currentTarget.classList.add('active');
       this.engine.setTool('trowel');
     });
 
     document.getElementById('toolSponge').addEventListener('click', (e) => {
-      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
       e.currentTarget.classList.add('active');
       this.engine.setTool('sponge');
     });
@@ -165,7 +173,7 @@ class GroutApp {
     // Reset current level
     document.getElementById('btnResetLevel').addEventListener('click', () => {
       this.loadLevel(this.currentLevelIndex);
-      this.showToast('Level reset! Fill it again!');
+      this.showToast('Joint cleared. Ready for fresh paste.');
     });
 
     // Next Level button
@@ -179,14 +187,17 @@ class GroutApp {
 
     // Audio Mute toggle
     const btnMute = document.getElementById('btnMute');
-    const updateMuteIcon = (isMuted) => {
-      btnMute.innerHTML = isMuted ? '🔇 <span>Unmute</span>' : '🔊 <span>Mute</span>';
+    const muteLabel = document.getElementById('muteLabel');
+    const updateMuteState = (isMuted) => {
+      if (muteLabel) {
+        muteLabel.textContent = isMuted ? 'Sound Off' : 'Sound On';
+      }
     };
-    updateMuteIcon(audio.muted);
+    updateMuteState(audio.muted);
     btnMute.addEventListener('click', () => {
       const isMuted = audio.toggleMute();
-      updateMuteIcon(isMuted);
-      this.showToast(isMuted ? 'Audio muted' : 'Audio unmuted! Sound on! 🎶');
+      updateMuteState(isMuted);
+      this.showToast(isMuted ? 'Audio muted' : 'Audio enabled');
     });
 
     // Soundboard Modal
@@ -204,7 +215,7 @@ class GroutApp {
     const nameInput = document.getElementById('certNameInput');
 
     const updateCertificate = () => {
-      const name = nameInput.value.trim() || 'Senior Mistri';
+      const name = nameInput.value.trim() || 'Senior Babu Mistri';
       CertificateGenerator.generateCertificate(certCanvas, name);
     };
 
@@ -227,9 +238,9 @@ class GroutApp {
     nameInput.addEventListener('input', updateCertificate);
 
     document.getElementById('btnDownloadDiploma').addEventListener('click', () => {
-      const name = (nameInput.value.trim() || 'Grout-Master').replace(/\s+/g, '-');
-      CertificateGenerator.download(certCanvas, `${name}-Degree.png`);
-      this.showToast('🎓 Diploma Downloaded! Show it to your parents!');
+      const name = (nameInput.value.trim() || 'Babu-Mistri').replace(/\s+/g, '-');
+      CertificateGenerator.download(certCanvas, `${name}-Diploma.png`);
+      this.showToast('Diploma generated & downloaded.');
     });
 
     // Social Sharing Buttons
@@ -260,11 +271,10 @@ class GroutApp {
     toast.classList.add('show');
     setTimeout(() => {
       toast.classList.remove('show');
-    }, 2400);
+    }, 2200);
   }
 }
 
-// Start game after DOM load
 window.addEventListener('DOMContentLoaded', () => {
   window.app = new GroutApp();
 });

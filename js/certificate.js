@@ -1,7 +1,7 @@
-// Certificate of Grout Mastery Diploma Generator using HTML5 Canvas
+// Artisanal Letterpress Diploma Generator using HTML5 Canvas for GROUT!
 
 export class CertificateGenerator {
-  static generateCertificate(canvas, playerName = "Certified Grout Master") {
+  static generateCertificate(canvas, playerName = "Senior Babu Mistri") {
     const ctx = canvas.getContext('2d');
     const width = 1200;
     const height = 800;
@@ -9,145 +9,154 @@ export class CertificateGenerator {
     canvas.width = width;
     canvas.height = height;
 
-    // Background - Vintage parchment diploma texture
+    // Background - Warm hand-milled rag paper texture
     const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, '#fdfbf7');
-    bgGrad.addColorStop(0.5, '#fef9ec');
-    bgGrad.addColorStop(1, '#fbf5e6');
+    bgGrad.addColorStop(0, '#FAF7F0');
+    bgGrad.addColorStop(0.5, '#F5F1E8');
+    bgGrad.addColorStop(1, '#EFEAE0');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Ornate Border
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#b45309'; // Rich Amber/Bronze
-    ctx.strokeRect(30, 30, width - 60, height - 60);
+    // Architectural Double Border (Letterpress rules)
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#78716C';
+    ctx.strokeRect(36, 36, width - 72, height - 72);
 
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#d97706';
-    ctx.strokeRect(46, 46, width - 92, height - 92);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#A8A29E';
+    ctx.strokeRect(44, 44, width - 88, height - 88);
 
-    // Corner flourishes
-    const corners = [
-      [55, 55], [width - 55, 55], [55, height - 55], [width - 55, height - 55]
+    // Decorative corner crosses
+    const cornerOffsets = [
+      [40, 40], [width - 40, 40], [40, height - 40], [width - 40, height - 40]
     ];
-    corners.forEach(([cx, cy]) => {
+    cornerOffsets.forEach(([cx, cy]) => {
       ctx.beginPath();
-      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-      ctx.fillStyle = '#b45309';
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#78716C';
       ctx.fill();
     });
 
     // Top Authority Emblem
-    ctx.fillStyle = '#92400e';
-    ctx.font = 'bold 22px "Times New Roman", Georgia, serif';
+    ctx.fillStyle = '#78716C';
+    ctx.font = '600 14px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('ALL INDIA COUNCIL OF JUGAAD & MISTRI FEDERATION', width / 2, 110);
+    ctx.letterSpacing = '3px';
+    ctx.fillText('ALL INDIA COUNCIL OF JUGAAD & MASONRY RESTORATION', width / 2, 105);
 
-    ctx.fillStyle = '#b45309';
-    ctx.font = 'italic 16px Georgia, serif';
-    ctx.fillText('Regd. Under Section 420 of Thekedar & Grout Works Act, 2026', width / 2, 140);
+    ctx.fillStyle = '#A8A29E';
+    ctx.font = 'italic 14px Georgia, serif';
+    ctx.fillText('Established 1984 • Registration No. JGD-420/GROUT', width / 2, 132);
+
+    // Divider Line
+    ctx.strokeStyle = '#D6CEBF';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(width / 2 - 180, 155);
+    ctx.lineTo(width / 2 + 180, 155);
+    ctx.stroke();
 
     // Diploma Title
-    ctx.fillStyle = '#78350f';
-    ctx.font = 'bold 54px "Times New Roman", Georgia, serif';
-    ctx.fillText('DOCTOR OF GROUTOLOGY', width / 2, 220);
+    ctx.fillStyle = '#1C1917';
+    ctx.font = '700 48px "Fraunces", Georgia, serif';
+    ctx.fillText('DOCTOR OF GROUTOLOGY', width / 2, 225);
 
-    ctx.font = 'bold 24px Georgia, serif';
-    ctx.fillStyle = '#d97706';
-    ctx.fillText('( D .  G R O U T )', width / 2, 260);
+    ctx.font = '600 16px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#9A3412';
+    ctx.fillText('HONORIS CAUSA ( D . G R O U T )', width / 2, 265);
 
     // Subtext
-    ctx.fillStyle = '#451a03';
+    ctx.fillStyle = '#57534E';
     ctx.font = 'italic 20px Georgia, serif';
-    ctx.fillText('This honorable parchment certifies that', width / 2, 315);
+    ctx.fillText('Be it known that by unanimous decree, the Council hereby confers upon', width / 2, 320);
 
-    // Recipient Name
-    ctx.font = 'bold 52px "Brush Script MT", "Times New Roman", cursive, serif';
-    ctx.fillStyle = '#1e293b';
-    ctx.fillText(playerName, width / 2, 385);
+    // Recipient Name (Hand-lettered style)
+    ctx.font = '700 52px "Fraunces", Georgia, serif';
+    ctx.fillStyle = '#1C1917';
+    ctx.fillText(playerName, width / 2, 390);
 
     // Underline for name
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#9A3412';
     ctx.beginPath();
-    ctx.moveTo(width / 2 - 250, 405);
-    ctx.lineTo(width / 2 + 250, 405);
+    ctx.moveTo(width / 2 - 240, 410);
+    ctx.lineTo(width / 2 + 240, 410);
     ctx.stroke();
 
     // Achievement Description
-    ctx.font = '19px Georgia, serif';
-    ctx.fillStyle = '#334155';
-    ctx.fillText('has proven exceptional bravery, supreme disregard for structural mathematics,', width / 2, 455);
-    ctx.fillText('and solved crooked stairs, shattered hearts, zero exam scores, and crumbling towers', width / 2, 488);
+    ctx.font = '18px Georgia, serif';
+    ctx.fillStyle = '#44403C';
+    ctx.fillText('this distinguished certificate for unyielding confidence in resolving catastrophic architectural,', width / 2, 460);
+    ctx.fillText('emotional, and existential crises across bathroom floors, shattered hearts, and sinking ships', width / 2, 492);
     
     // Iconic Punchline
-    ctx.font = 'bold 26px Georgia, serif';
-    ctx.fillStyle = '#b45309';
-    ctx.fillText('BY DECLARING: "ISME GROUT BHAR DENGE!"', width / 2, 535);
+    ctx.font = 'bold 22px "Fraunces", Georgia, serif';
+    ctx.fillStyle = '#9A3412';
+    ctx.fillText('BY PRONOUNCING THE SACRED WORDS: "ISME GROUT BHAR DENGE"', width / 2, 545);
 
-    // Gold Medal Seal
+    // Hand-pressed Terracotta Wax Seal
     const sealX = width / 2;
     const sealY = 660;
-    const sealGrad = ctx.createRadialGradient(sealX, sealY, 10, sealX, sealY, 65);
-    sealGrad.addColorStop(0, '#fde68a');
-    sealGrad.addColorStop(0.7, '#f59e0b');
-    sealGrad.addColorStop(1, '#b45309');
-
+    
     ctx.save();
     ctx.beginPath();
-    ctx.arc(sealX, sealY, 65, 0, Math.PI * 2);
-    ctx.fillStyle = sealGrad;
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-    ctx.shadowBlur = 15;
+    ctx.arc(sealX, sealY, 55, 0, Math.PI * 2);
+    ctx.fillStyle = '#9A3412'; // Rich Terracotta Seal
+    ctx.shadowColor = 'rgba(28, 25, 23, 0.15)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
     ctx.fill();
 
-    ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 3;
+    // Seal inner ring
+    ctx.strokeStyle = '#F7F4EE';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(sealX, sealY, 46, 0, Math.PI * 2);
     ctx.stroke();
 
     // Seal text
-    ctx.fillStyle = '#451a03';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#F7F4EE';
+    ctx.font = '600 9px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('★ 100% CERTIFIED ★', sealX, sealY - 18);
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText('MISTRI OP', sealX, sealY + 6);
-    ctx.font = '10px sans-serif';
-    ctx.fillText('APPROVED JUGAAD', sealX, sealY + 24);
+    ctx.fillText('OFFICIAL SEAL', sealX, sealY - 14);
+    ctx.font = 'bold 15px "Fraunces", serif';
+    ctx.fillText('MISTRI OP', sealX, sealY + 5);
+    ctx.font = '600 8px "JetBrains Mono", monospace';
+    ctx.fillText('APPROVED JUGAAD', sealX, sealY + 20);
     ctx.restore();
 
     // Signatures
     // Left Sign
-    ctx.font = 'italic bold 24px "Brush Script MT", cursive, serif';
-    ctx.fillStyle = '#1e293b';
+    ctx.font = 'italic 24px Georgia, cursive, serif';
+    ctx.fillStyle = '#1C1917';
     ctx.textAlign = 'center';
-    ctx.fillText('Ramesh Thekedar', 240, 680);
+    ctx.fillText('R. K. Thekedar', 240, 680);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = '#64748b';
+    ctx.strokeStyle = '#A8A29E';
     ctx.beginPath();
     ctx.moveTo(140, 695);
     ctx.lineTo(340, 695);
     ctx.stroke();
-    ctx.font = '14px Georgia, serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('Senior Angry Thekedar', 240, 720);
+    ctx.font = '13px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#78716C';
+    ctx.fillText('Chief Site Inspector', 240, 718);
 
     // Right Sign
-    ctx.font = 'italic bold 24px "Brush Script MT", cursive, serif';
-    ctx.fillStyle = '#1e293b';
+    ctx.font = 'italic 24px Georgia, cursive, serif';
+    ctx.fillStyle = '#1C1917';
     ctx.fillText('Babu Mistri', width - 240, 680);
     ctx.beginPath();
     ctx.moveTo(width - 340, 695);
     ctx.lineTo(width - 140, 695);
     ctx.stroke();
-    ctx.font = '14px Georgia, serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('Chief Grout Officer (CGO)', width - 240, 720);
+    ctx.font = '13px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#78716C';
+    ctx.fillText('Chief Grout Officer (CGO)', width - 240, 718);
 
     return canvas;
   }
 
-  static download(canvas, filename = 'Grout-Master-Diploma.png') {
+  static download(canvas, filename = 'Doctor-of-Groutology.png') {
     const link = document.createElement('a');
     link.download = filename;
     link.href = canvas.toDataURL('image/png');
