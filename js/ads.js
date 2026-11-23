@@ -24,11 +24,14 @@ export class AdManager {
     try {
       if (window.adsbygoogle && Array.isArray(window.adsbygoogle)) {
         const adSlots = document.querySelectorAll('.adsbygoogle:not([data-adsbygoogle-status])');
-        adSlots.forEach(() => {
-          try {
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (err) {
-            console.warn('AdSense slot init notice:', err);
+        adSlots.forEach((slot) => {
+          // Only initialize slots with valid client and slot attributes
+          if (slot.getAttribute('data-ad-slot') && slot.getAttribute('data-ad-client')) {
+            try {
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (err) {
+              console.warn('AdSense slot init notice:', err);
+            }
           }
         });
       }
@@ -38,45 +41,11 @@ export class AdManager {
   }
 
   showLevelTransitionAd(onAdComplete) {
-    const modal = document.getElementById('adTransitionModal');
-    const timerSpan = document.getElementById('adCountdownTimer');
-    const skipBtn = document.getElementById('adSkipButton');
-    
-    if (!modal) {
-      if (onAdComplete) onAdComplete();
-      return;
+    // In compliance with AdSense policy, standard display ads are not rendered in timed modals.
+    // Transition directly to the next level smoothly without forced countdowns.
+    if (onAdComplete) {
+      onAdComplete();
     }
-
-    modal.classList.add('active');
-    let timeLeft = 3;
-    if (timerSpan) timerSpan.textContent = `${timeLeft}s`;
-    if (skipBtn) skipBtn.style.opacity = '0.5';
-
-    // Refresh ad inside modal
-    this.refreshAds();
-
-    const interval = setInterval(() => {
-      timeLeft--;
-      if (timeLeft <= 0) {
-        clearInterval(interval);
-        if (timerSpan) timerSpan.textContent = 'Ready!';
-        if (skipBtn) {
-          skipBtn.style.opacity = '1';
-          skipBtn.textContent = 'Continue to Next Level ➡️';
-        }
-      } else {
-        if (timerSpan) timerSpan.textContent = `${timeLeft}s`;
-      }
-    }, 1000);
-
-    const handleContinue = () => {
-      clearInterval(interval);
-      modal.classList.remove('active');
-      skipBtn.removeEventListener('click', handleContinue);
-      if (onAdComplete) onAdComplete();
-    };
-
-    skipBtn.addEventListener('click', handleContinue);
   }
 }
 

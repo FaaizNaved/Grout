@@ -37,30 +37,124 @@ export class GroutEngine {
     this.setupListeners();
     this.handleResize();
     window.addEventListener('resize', () => this.handleResize());
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => this.handleResize(), 100);
+    });
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
 
   handleResize() {
-    const rect = this.canvas.parentElement.getBoundingClientRect();
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    if (!rect.width) return;
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     
-    const width = Math.min(rect.width, 720);
-    const height = Math.min(rect.height || width * 0.85, 600);
+    // Fit viewport cleanly
+    const newWidth = Math.min(Math.floor(rect.width), 720);
+    // On mobile viewports keep aspect ratio ~0.74 so canvas & tool deck remain above the fold
+    const isMobile = window.innerWidth <= 640;
+    const targetRatio = isMobile ? 0.74 : 0.80;
+    const newHeight = Math.min(Math.round(newWidth * targetRatio), 560);
     
-    this.canvas.style.width = `${width}px`;
-    this.canvas.style.height = `${height}px`;
+    const oldWidth = this.width;
+    const oldHeight = this.height;
 
-    this.canvas.width = width * dpr;
-    this.canvas.height = height * dpr;
+    if (oldWidth === newWidth && oldHeight === newHeight) {
+      return;
+    }
+
+    this.canvas.style.width = `${newWidth}px`;
+    this.canvas.style.height = `${newHeight}px`;
+
+    this.canvas.width = newWidth * dpr;
+    this.canvas.height = newHeight * dpr;
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
 
-    this.width = width;
-    this.height = height;
+    this.width = newWidth;
+    this.height = newHeight;
 
     if (this.currentLevel) {
-      this.initLevel(this.currentLevel, false);
+      if (!oldWidth || !oldHeight || oldWidth === 0 || oldHeight === 0) {
+        this.initLevel(this.currentLevel, false);
+      } else {
+        this.resizeLevel(oldWidth, oldHeight, newWidth, newHeight);
+      }
+    }
+  }
+
+  resizeLevel(oldWidth, oldHeight, newWidth, newHeight) {
+    if (!oldWidth || !oldHeight || oldWidth === 0 || oldHeight === 0) return;
+
+    const scaleX = newWidth / oldWidth;
+    const scaleY = newHeight / oldHeight;
+
+    // 1. Rescale all recorded grout strokes proportionally
+    this.strokes.forEach(stroke => {
+      if (stroke.points) {
+        stroke.points.forEach(p => {
+          p.x *= scaleX;
+          p.y *= scaleY;
+        });
+      }
+      if (stroke.width) {
+        stroke.width *= (scaleX + scaleY) / 2;
+      }
+    });
+
+    // 2. Map filled sample points by gapIdx and normalized parameter t
+    const filledByGap = new Map();
+    this.samplePoints.forEach(pt => {
+      if (pt.filled) {
+        if (!filledByGap.has(pt.gapIdx)) {
+          filledByGap.set(pt.gapIdx, []);
+        }
+        filledByGap.get(pt.gapIdx).push(pt.t);
+      }
+    });
+
+    // 3. Re-generate gaps for new dimensions
+    this.gaps = this.currentLevel.generateGaps(newWidth, newHeight);
+    this.samplePoints = [];
+    this.filledPointsCount = 0;
+
+    const step = 8;
+    this.gaps.forEach((gap, gapIdx) => {
+      const dx = gap.x2 - gap.x1;
+      const dy = gap.y2 - gap.y1;
+      const dist = Math.hypot(dx, dy);
+      const steps = Math.max(Math.floor(dist / step), 1);
+      const filledTs = filledByGap.get(gapIdx) || [];
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const tol = Math.max(1 / steps, 0.05);
+        const isFilled = filledTs.some(oldT => Math.abs(oldT - t) <= tol);
+
+        if (isFilled) {
+          this.filledPointsCount++;
+        }
+
+        this.samplePoints.push({
+          x: gap.x1 + dx * t,
+          y: gap.y1 + dy * t,
+          radius: (gap.width || 24) * 0.6,
+          filled: isFilled,
+          gapIdx,
+          t
+        });
+      }
+    });
+
+    // 4. Update progress callback with preserved coverage
+    const total = this.samplePoints.length;
+    const coverage = total > 0 ? (this.filledPointsCount / total) * 100 : 0;
+    if (this.onProgress) {
+      this.onProgress(Math.min(coverage, 100), this.combo);
     }
   }
 
@@ -96,7 +190,8 @@ export class GroutEngine {
           y: gap.y1 + dy * t,
           radius: (gap.width || 24) * 0.6,
           filled: false,
-          gapIdx
+          gapIdx,
+          t
         });
       }
     });
@@ -122,8 +217,8 @@ export class GroutEngine {
 
   getPointerPos(e) {
     const rect = this.canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
     return {
       x: clientX - rect.left,
       y: clientY - rect.top
@@ -148,7 +243,7 @@ export class GroutEngine {
         };
         this.strokes.push(this.currentStroke);
       }
-      this.checkGroutFill(pos);
+      this.checkGroutFill(null, pos);
     };
 
     const onMove = (e) => {
@@ -163,7 +258,7 @@ export class GroutEngine {
         const dy = pos.y - this.lastPos.y;
         const dist = Math.hypot(dx, dy);
 
-        if (dist > 3) {
+        if (dist > 2) {
           this.toolAngle = Math.atan2(dy, dx);
           
           if (this.tool === 'trowel') {
@@ -175,7 +270,7 @@ export class GroutEngine {
             this.spawnSpongeSparkles(pos.x, pos.y);
           }
 
-          this.checkGroutFill(pos);
+          this.checkGroutFill(this.lastPos, pos);
           this.lastPos = pos;
         }
       }
@@ -189,9 +284,14 @@ export class GroutEngine {
       }
     };
 
+    const onLeave = () => {
+      this.currentPos = null;
+    };
+
     this.canvas.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
+    this.canvas.addEventListener('mouseleave', onLeave);
 
     this.canvas.addEventListener('touchstart', onStart, { passive: false });
     window.addEventListener('touchmove', onMove, { passive: false });
@@ -263,16 +363,38 @@ export class GroutEngine {
     });
   }
 
-  checkGroutFill(pos) {
+  checkGroutFill(p1, p2) {
     if (this.isCompleted) return;
 
     let newlyFilled = 0;
     const thresholdDist = this.tool === 'sponge' ? 38 : 26;
+    const thresholdDistSq = thresholdDist * thresholdDist;
+
+    // Continuous point-to-segment squared distance helper
+    const distToSegmentSq = (px, py, x1, y1, x2, y2) => {
+      const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+      if (l2 === 0) {
+        return (px - x1) * (px - x1) + (py - y1) * (py - y1);
+      }
+      let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      const projX = x1 + t * (x2 - x1);
+      const projY = y1 + t * (y2 - y1);
+      return (px - projX) * (px - projX) + (py - projY) * (py - projY);
+    };
+
+    const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
 
     this.samplePoints.forEach(pt => {
       if (!pt.filled) {
-        const d = Math.hypot(pt.x - pos.x, pt.y - pos.y);
-        if (d <= thresholdDist) {
+        let dSq;
+        if (hasSegment) {
+          dSq = distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y);
+        } else {
+          dSq = (pt.x - p2.x) * (pt.x - p2.x) + (pt.y - p2.y) * (pt.y - p2.y);
+        }
+
+        if (dSq <= thresholdDistSq) {
           pt.filled = true;
           newlyFilled++;
           this.filledPointsCount++;
@@ -292,7 +414,7 @@ export class GroutEngine {
         audio.playChime(chimeNote);
         const praiseList = ["PERFECT JOINT", "SMOOTH SPREAD", "MISTRI APPROVED", "TRUE JUGAAD"];
         const praise = praiseList[Math.floor(Math.random() * praiseList.length)];
-        this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, pos.x, pos.y - 20);
+        this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, p2.x, p2.y - 20);
       }
 
       const total = this.samplePoints.length;

@@ -166,6 +166,11 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.bottom-strip {
+  /* Enforce minimum 150px separation between game canvas/controls and ad units per Google Game Ad placement guidance */
+  margin-top: 150px;
+}
+
 .ad-meta-label {
   font-family: var(--font-mono);
   font-size: 0.62rem;
@@ -452,7 +457,7 @@ body {
 
 canvas#gameCanvas {
   display: block;
-  cursor: crosshair;
+  cursor: none;
 }
 
 /* Tool Deck */
@@ -827,20 +832,185 @@ canvas#gameCanvas {
   transform: translateY(0);
 }
 
-/* Mobile Responsive */
-@media (max-width: 600px) {
+/* Mobile Responsive & Viewport Ergonomics */
+@media (max-width: 680px) {
   .page-frame {
-    padding: 16px 12px 36px;
+    padding: 8px 10px 32px;
+    gap: 8px;
   }
+
+  .site-header {
+    padding-bottom: 4px;
+  }
+
+  .brand-glyph {
+    font-size: 1.2rem;
+  }
+
+  .brand-name {
+    font-size: 1.15rem;
+  }
+
+  .brand-tag {
+    font-size: 0.60rem;
+  }
+
+  .nav-btn {
+    padding: 4px 8px;
+    font-size: 0.74rem;
+  }
+
+  .ad-banner-strip {
+    min-height: 38px;
+    padding: 5px 10px;
+  }
+
+  .fallback-banner {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .inspection-report {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+
+  .report-header {
+    padding-bottom: 4px;
+  }
+
+  .report-meta {
+    gap: 6px;
+  }
+
+  .report-id, .report-case {
+    font-size: 0.60rem;
+  }
+
+  .badge-tag {
+    font-size: 0.60rem;
+    padding: 2px 6px;
+  }
+
+  .report-body {
+    gap: 4px;
+  }
+
+  .speaker-row {
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .speaker-role {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .quote-text {
+    font-size: 0.78rem;
+    line-height: 1.25;
+    margin: 0;
+  }
+
+  .canvas-hud {
+    padding: 6px 10px;
+    gap: 8px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hud-left {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .hud-label {
+    font-size: 0.60rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .hud-title {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hud-center {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 110px;
+    max-width: 120px;
+  }
+
+  .progress-info {
+    display: none;
+  }
+
+  .meter-bar {
+    height: 7px;
+    flex: 1;
+  }
+
+  .hud-right {
+    display: none;
+  }
+
+  .stages-ribbon {
+    gap: 5px;
+    padding: 1px 0;
+  }
+
+  .level-pill {
+    padding: 3px 8px;
+    font-size: 0.66rem;
+  }
+
+  .tool-deck {
+    padding: 6px 10px;
+    gap: 6px;
+    justify-content: space-between;
+  }
+
+  .deck-group {
+    gap: 6px;
+  }
+
+  .deck-btn {
+    padding: 5px 9px;
+    font-size: 0.74rem;
+  }
+
+  .deck-btn-ghost, .deck-btn-accent {
+    padding: 5px 9px;
+    font-size: 0.74rem;
+  }
+
+  .swatch-btn {
+    width: 20px;
+    height: 20px;
+  }
+
   .sound-grid {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
-  .canvas-hud {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-  .hud-center {
-    max-width: 100%;
+
+  .bottom-strip {
+    margin-top: 150px;
   }
 }

@@ -234,7 +234,7 @@ In addition, an **offscreen Haze Buffer Canvas** (`hazeCanvas`) at the same reso
   `#bottomAdSlot` is currently placed less than 15px below the interactive `.tool-deck` toolbar.
   *Official Guidance:* Google's official AdSense placement guide for HTML5 and web games specifies:
   > *"Maintain a distance of at least 150 pixels between the ad and the edge of a game canvas or clickable game elements to prevent accidental clicks."*
-  Placing banners closer than 150px to rapid tapping zones (color swatches, reset buttons) creates high risk of accidental clicks, triggering Google's automated Invalid Traffic (IVT) penalty and ad-serving limits.
+  Placing banners closer than 150px to rapid tapping zones (color swatches, reset buttons) creates risk of accidental clicks, which can contribute to invalid traffic (IVT) and potential ad-serving limits.
 
 ### 8.3 Technical Configuration Errors (Not Policy Violations)
 - **Dummy Ad Slot Identifiers (`index.html#L70,L179,L310`):**
@@ -243,7 +243,7 @@ In addition, an **offscreen Haze Buffer Canvas** (`hazeCanvas`) at the same reso
 
 ### 8.4 Technical Recommendations
 - **Option A (Google Auto Ads):** Remove hardcoded `data-ad-slot` units entirely. Let Google Auto Ads automatically place optimized header/anchor ads, while adding explicit CSS container rules to maintain 150px clearance from the game canvas.
-- **Option B (AdSense for Games / H5 Games Ads):** For level-transition interstitial ads, implement the official H5 Games Ads API (`window.adsbygoogle.push({ params: { ... } })`) which is fully policy-compliant for in-game breaks.
+- **Option B (AdSense for Games / H5 Games Ads):** For level-transition interstitial breaks, Google's documented H5 Games Ads SDK uses `adConfig()` and `adBreak()` function calls (e.g. `adBreak({ type: 'next', name: 'level_complete', beforeBreak: ..., afterBreak: ... })`), which are policy-compliant for in-game natural breaks.
 
 ### 8.5 SEO Deficiencies
 - **Broken Social Previews (`index.html#L22,L28`):** `og:image` uses relative path `/og-preview.svg`. Open Graph scrapers require absolute URLs (`https://...`) and raster formats (PNG/JPEG). Shared links on WhatsApp and Twitter currently display without preview thumbnails.
