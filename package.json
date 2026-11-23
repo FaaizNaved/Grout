@@ -1,0 +1,24 @@
+{
+  "name": "grout",
+  "version": "1.0.0",
+  "description": "GROUT! - The Viral 'Isme Grout Bhar Denge' Tile ASMR Web Game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "grout",
+    "isme grout bhar denge",
+    "tile game",
+    "asmr game",
+    "viral meme game",
+    "browser game"
+  ],
+  "author": "Grout Team",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
