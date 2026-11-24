@@ -340,7 +340,9 @@ class GroutApp {
       verdictEl.textContent = funnyVerdicts[Math.floor(Math.random() * funnyVerdicts.length)];
     }
 
-    victoryModal.classList.add('active');
+    if (victoryModal) {
+      victoryModal.classList.add('active');
+    }
   }
 
   setupUIListeners() {
@@ -520,3 +522,5 @@ class GroutApp {
 window.addEventListener('DOMContentLoaded', () => {
   window.app = new GroutApp();
 });
+
+export { GroutApp };

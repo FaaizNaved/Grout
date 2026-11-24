@@ -61,6 +61,7 @@ export class GroutEngine {
     // Level 4 Curing & Countdown Timer
     this.timeRemaining = 75;
     this.countdownTimer = null;
+    this.timeOffset = 0;
 
     // Level 5 Restoration Puzzle & Fragility
     this.restorationStage = 1; // 1 = Puzzle, 2 = Grouting
@@ -301,6 +302,8 @@ export class GroutEngine {
     this.activeBlowouts = 0;
     this.blowoutCounter = 0;
     this.activeBlowoutsList = [];
+    this.timeOffset = 0;
+    this.strokeBuffedPatches = null;
     this.timeRemaining = level.overallDeadlineSec || 75;
     if (this.countdownTimer) clearInterval(this.countdownTimer);
 
@@ -405,6 +408,14 @@ export class GroutEngine {
     }
   }
 
+  now() {
+    return performance.now() + (this.timeOffset || 0);
+  }
+
+  advanceTime(ms) {
+    this.timeOffset = (this.timeOffset || 0) + ms;
+  }
+
   setGroutColor(color, border) {
     this.groutColor = color;
     this.groutBorder = border || color;
@@ -419,7 +430,7 @@ export class GroutEngine {
     const clientY = touch ? touch.clientY : (e.clientY !== undefined ? e.clientY : 0);
     const scaleX = rect.width && this.width ? this.width / rect.width : 1;
     const scaleY = rect.height && this.height ? this.height / rect.height : 1;
-    const time = (e && e.timeStamp) ? e.timeStamp : performance.now();
+    const time = (e && e.timeStamp) ? e.timeStamp : this.now();
     return {
       x: (clientX - rect.left) * scaleX,
       y: (clientY - rect.top) * scaleY,
@@ -437,6 +448,7 @@ export class GroutEngine {
       this.lastPos = pos;
       this.currentPos = pos;
       this.isDragging = true;
+      this.strokeBuffedPatches = new Set();
 
       // Stage 1 Restoration Puzzle drag check
       if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) {
@@ -517,6 +529,7 @@ export class GroutEngine {
       this.isDragging = false;
       this.lastPos = null;
       this.currentStroke = null;
+      this.strokeBuffedPatches = null;
 
       // Stage 1 Puzzle piece drop resolution
       if (this.draggedPiece) {
@@ -909,7 +922,7 @@ export class GroutEngine {
         opacity: 0.60 + Math.random() * 0.20,
         cleaned: false,
         color: this.groutColor,
-        depositedAt: performance.now(),
+        depositedAt: this.now(),
         passesRequired: 1,
         isCured: false
       };
@@ -1035,28 +1048,30 @@ export class GroutEngine {
 
     // LEVEL 3 COLOR VALIDATION CHECK
     if (this.currentLevel && this.currentLevel.hasColorMatching) {
-      for (const pt of this.samplePoints) {
-        let dSq;
-        if (hasSegment) {
-          dSq = this.distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y);
-        } else {
-          dSq = (pt.x - p2.x) * (pt.x - p2.x) + (pt.y - p2.y) * (pt.y - p2.y);
-        }
+      const nearbyPoints = this.samplePoints.filter(pt => {
+        const dSq = hasSegment
+          ? this.distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y)
+          : (pt.x - p2.x) * (pt.x - p2.x) + (pt.y - p2.y) * (pt.y - p2.y);
+        return dSq <= thresholdDistSq;
+      });
 
-        if (dSq <= thresholdDistSq) {
+      if (nearbyPoints.length > 0) {
+        const activeColor = (this.groutColor || '').toLowerCase();
+        const matchesAny = nearbyPoints.some(pt => {
           const gap = this.gaps[pt.gapIdx];
-          if (gap && gap.requiredColor) {
-            const activeColor = (this.groutColor || '').toLowerCase();
-            const reqColor = (gap.requiredColor || '').toLowerCase();
-            if (activeColor !== reqColor) {
-              const reqName = gap.requiredColor === '#F5F2EB' ? 'Chalk Limestone White' : 'Burnt Terracotta';
-              this.triggerLevelFailure(
-                "COLOR MISMATCH FAILURE",
-                `Babu Mistri applied the wrong grout color to this Moroccan section! This section requires ${reqName}. Moroccan master demands restart.`
-              );
-              return;
-            }
-          }
+          return gap && (gap.requiredColor || '').toLowerCase() === activeColor;
+        });
+
+        if (!matchesAny) {
+          const expectedGap = this.gaps[nearbyPoints[0].gapIdx];
+          const reqName = expectedGap && expectedGap.requiredColor === '#F5F2EB'
+            ? 'Chalk Limestone White'
+            : 'Burnt Terracotta';
+          this.triggerLevelFailure(
+            "COLOR MISMATCH FAILURE",
+            `Babu Mistri applied the wrong grout color to this Moroccan section! This section requires ${reqName}. Moroccan master demands restart.`
+          );
+          return;
         }
       }
     }
@@ -1070,6 +1085,15 @@ export class GroutEngine {
       }
 
       if (dSq <= thresholdDistSq) {
+        if (this.currentLevel && this.currentLevel.hasColorMatching) {
+          const gap = this.gaps[pt.gapIdx];
+          if (gap && gap.requiredColor) {
+            const activeColor = (this.groutColor || '').toLowerCase();
+            const reqColor = (gap.requiredColor || '').toLowerCase();
+            if (activeColor !== reqColor) return;
+          }
+        }
+
         if (!pt.filled) {
           pt.filled = true;
           newlyFilled++;
@@ -1147,11 +1171,12 @@ export class GroutEngine {
     const spongeRadius = 36;
     const spongeRadiusSq = spongeRadius * spongeRadius;
     const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
-    const now = performance.now();
+    const now = this.now();
 
     // LEVEL 2 BLOWOUT MECHANIC: Aggressive sponge scrubbing over already-sealed joints
     if (this.currentLevel && this.currentLevel.hasBlowoutMechanic && hasSegment) {
-      const dt = (p2.time && p1.time) ? Math.max(1, p2.time - p1.time) : 16;
+      const rawDt = (p2.time && p1.time) ? (p2.time - p1.time) : 16;
+      const dt = rawDt >= 8 ? rawDt : 16;
       const strokeDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
       const speed = strokeDist / dt; // px/ms
 
@@ -1204,6 +1229,12 @@ export class GroutEngine {
         }
 
         if (patch.isCured) {
+          if (this.isDragging) {
+            if (!this.strokeBuffedPatches) this.strokeBuffedPatches = new Set();
+            if (this.strokeBuffedPatches.has(patch)) continue;
+            this.strokeBuffedPatches.add(patch);
+          }
+
           if (patch.passesRequired === undefined) patch.passesRequired = 3;
           patch.passesRequired -= 1;
           if (patch.passesRequired > 0) {
@@ -1443,7 +1474,7 @@ export class GroutEngine {
     });
 
     // Draw Excess Surface Grout Haze
-    const now = performance.now();
+    const now = this.now();
     for (let i = 0; i < this.hazePatches.length; i++) {
       const p = this.hazePatches[i];
       if (p.cleaned || p.opacity <= 0.02) continue;

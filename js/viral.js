@@ -4,7 +4,9 @@ import { audio, VOICE_ASSET_MANIFEST, MEME_CLIPS } from './audio.js';
 
 export class ViralManager {
   constructor() {
-    this.gameUrl = typeof window !== 'undefined' ? window.location.href.split('#')[0] : 'https://grout.game';
+    this.gameUrl = typeof window !== 'undefined' && window.location && window.location.href
+      ? window.location.href.split('#')[0]
+      : 'https://grout.game';
     this.activePlayingId = null;
   }
 

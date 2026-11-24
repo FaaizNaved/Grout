@@ -7,6 +7,7 @@ globalThis.window = {
   innerWidth: 1280,
   innerHeight: 800,
   devicePixelRatio: 1,
+  location: { href: 'http://localhost/' },
   addEventListener: () => {},
   removeEventListener: () => {},
   AudioContext: class {
@@ -20,8 +21,12 @@ globalThis.window = {
   }
 };
 globalThis.document = {
+  location: { href: 'http://localhost/' },
   addEventListener: () => {},
-  removeEventListener: () => {}
+  removeEventListener: () => {},
+  getElementById: () => null,
+  querySelector: () => null,
+  querySelectorAll: () => []
 };
 globalThis.localStorage = {
   getItem: () => null,
@@ -95,6 +100,7 @@ console.log('🧪 Starting Five-Level Campaign Mechanics Test Suite...\n');
 
 const { LEVELS } = await import('../js/levels.js');
 const { GroutEngine } = await import('../js/engine.js');
+const { GroutApp } = await import('../js/main.js');
 
 // ---------------------------------------------------------------------------
 // TEST 1: Campaign Structure & Distinct Level Identities
@@ -287,8 +293,8 @@ const patch = engine.hazePatches[0];
 assert.ok(patch, 'Haze patch must exist');
 assert.equal(patch.isCured, false, 'Freshly deposited haze is workable');
 
-// Fast-forward patch age to 35 seconds (past 30s curing delay)
-patch.depositedAt = performance.now() - 35000;
+// Fast-forward engine clock past the 30s curing threshold
+engine.advanceTime(35000);
 
 // Sponge attempt on cured patch
 engine.setTool('sponge');
@@ -366,46 +372,41 @@ assert.equal(engine.restorationStage, 2, 'All 4 pieces snapped unlocks Stage 2 g
 console.log('  ✓ Two-stage restoration, real pointer dragging & snapping, and stage unlocking verified.\n');
 
 // ---------------------------------------------------------------------------
-// TEST 6: Sequential Campaign Unlocking & LocalStorage Persistence
+// TEST 6: Sequential Campaign Unlocking & LocalStorage Persistence (Real GroutApp)
 // ---------------------------------------------------------------------------
-console.log('Test 6: Sequential Campaign Progression & LocalStorage Persistence');
+console.log('Test 6: Sequential Campaign Progression & LocalStorage Persistence via GroutApp');
 const storageMap = new Map();
-const mockStorage = {
+globalThis.localStorage = {
   getItem: (k) => storageMap.get(k) || null,
   setItem: (k, v) => storageMap.set(k, String(v))
 };
-globalThis.localStorage = mockStorage;
 
-const getUnlockedLevel = () => {
-  const val = parseInt(mockStorage.getItem('grout_unlocked_level') || '1', 10);
-  return !isNaN(val) && val >= 1 ? Math.min(val, 6) : 1;
-};
+const app = Object.create(GroutApp.prototype);
+app.setupLevelSelector = () => {};
+app.showToast = () => {};
 
-const unlockLevel = (lvlId) => {
-  const cur = getUnlockedLevel();
-  if (lvlId > cur) {
-    mockStorage.setItem('grout_unlocked_level', String(Math.min(lvlId, 6)));
-  }
-};
+assert.equal(app.getUnlockedLevel(), 1, 'Initial unlocked level must be 1');
 
-assert.equal(getUnlockedLevel(), 1, 'Initial unlocked level must be 1');
+// Sequential unlock verification using real GroutApp.onComplete method
+app.onComplete(lvl1, {});
+assert.equal(app.getUnlockedLevel(), 2, 'Level 2 unlocks after completing Level 1');
 
-// Sequential unlock verification
-unlockLevel(2);
-assert.equal(getUnlockedLevel(), 2, 'Level 2 unlocks after completing Level 1');
-unlockLevel(3);
-assert.equal(getUnlockedLevel(), 3, 'Level 3 unlocks after completing Level 2');
-unlockLevel(4);
-assert.equal(getUnlockedLevel(), 4, 'Level 4 unlocks after completing Level 3');
-unlockLevel(5);
-assert.equal(getUnlockedLevel(), 5, 'Level 5 unlocks after completing Level 4');
-unlockLevel(6);
-assert.equal(getUnlockedLevel(), 6, 'Endless ASMR (Level 6) unlocks after completing Level 5');
+app.onComplete(lvl2, {});
+assert.equal(app.getUnlockedLevel(), 3, 'Level 3 unlocks after completing Level 2');
+
+app.onComplete(lvl3, {});
+assert.equal(app.getUnlockedLevel(), 4, 'Level 4 unlocks after completing Level 3');
+
+app.onComplete(lvl4, {});
+assert.equal(app.getUnlockedLevel(), 5, 'Level 5 unlocks after completing Level 4');
+
+app.onComplete(lvl5, {});
+assert.equal(app.getUnlockedLevel(), 6, 'Endless ASMR (Level 6) unlocks after completing Level 5');
 
 // Completed levels remain replayable
 for (let lvl = 1; lvl <= 6; lvl++) {
-  assert.ok(lvl <= getUnlockedLevel(), `Level ${lvl} must remain unlocked for replay`);
+  assert.ok(lvl <= app.getUnlockedLevel(), `Level ${lvl} must remain unlocked for replay`);
 }
-console.log('  ✓ Sequential campaign unlocking (1 -> 2 -> 3 -> 4 -> 5 -> Endless) and replayability verified.\n');
+console.log('  ✓ Sequential campaign unlocking through real GroutApp.onComplete and localStorage verified.\n');
 
 console.log('🎉 All Campaign Mechanics Tests Passed Successfully!\n');
