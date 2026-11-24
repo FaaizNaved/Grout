@@ -14,6 +14,9 @@ class GroutApp {
     this.canvas = document.getElementById('gameCanvas');
     this.progressFill = document.getElementById('progressFill');
     this.progressPercent = document.getElementById('progressPercent');
+    this.hazeFill = document.getElementById('hazeFill');
+    this.hazePercent = document.getElementById('hazePercent');
+    this.hudPhaseHint = document.getElementById('hudPhaseHint');
     this.comboPill = document.getElementById('comboPill');
 
     this.init();
@@ -99,6 +102,9 @@ class GroutApp {
     // Reset progress HUD
     this.progressFill.style.width = '0%';
     this.progressPercent.textContent = '0%';
+    if (this.hazeFill) this.hazeFill.style.width = '0%';
+    if (this.hazePercent) this.hazePercent.textContent = '0%';
+    if (this.hudPhaseHint) this.hudPhaseHint.textContent = 'Phase 1: Fill joints with trowel';
     const streakValEl = this.comboPill.querySelector('.streak-val');
     if (streakValEl) streakValEl.textContent = '1x';
 
@@ -123,10 +129,17 @@ class GroutApp {
     adManager.refreshAds();
   }
 
-  onProgress(coverage, combo) {
-    const formatted = Math.min(Math.round(coverage), 100);
-    this.progressFill.style.width = `${formatted}%`;
-    this.progressPercent.textContent = `${formatted}%`;
+  onProgress(metrics, combo) {
+    const groutPct = typeof metrics === 'object' ? metrics.groutCoverage : Math.min(Math.round(metrics), 100);
+    const hazePct = typeof metrics === 'object' ? metrics.hazeCleaning : 0;
+    const statusText = typeof metrics === 'object' ? metrics.statusText : '';
+
+    this.progressFill.style.width = `${groutPct}%`;
+    this.progressPercent.textContent = `${groutPct}%`;
+
+    if (this.hazeFill) this.hazeFill.style.width = `${hazePct}%`;
+    if (this.hazePercent) this.hazePercent.textContent = `${hazePct}%`;
+    if (this.hudPhaseHint && statusText) this.hudPhaseHint.textContent = statusText;
 
     const streakValEl = this.comboPill.querySelector('.streak-val');
     if (streakValEl) {
@@ -134,13 +147,22 @@ class GroutApp {
     }
   }
 
-  onComplete(level) {
+  onComplete(level, metrics) {
     const victoryModal = document.getElementById('victoryModal');
     const verdictEl = document.getElementById('victoryVerdict');
     const victoryLevelTitle = document.getElementById('victoryLevelTitle');
+    const groutPill = document.getElementById('victoryGroutPill');
+    const cleanPill = document.getElementById('victoryCleanPill');
 
     if (victoryLevelTitle) {
       victoryLevelTitle.textContent = `${level.name} Approved`;
+    }
+
+    if (groutPill && metrics && typeof metrics === 'object') {
+      groutPill.textContent = `Joint Grout: ${metrics.groutCoverage}%`;
+    }
+    if (cleanPill && metrics && typeof metrics === 'object') {
+      cleanPill.textContent = `Haze Buffed: ${metrics.hazeCleaning}%`;
     }
 
     const funnyVerdicts = [

@@ -106,13 +106,27 @@
       </div>
 
       <div class="hud-center">
-        <div class="progress-info">
-          <span class="progress-title">JOINT COVERAGE</span>
-          <span class="progress-val" id="progressPercent">0%</span>
+        <div class="progress-dual">
+          <div class="progress-metric" id="groutMetricGroup" title="Trowel Grout Joint Filling">
+            <div class="metric-label-row">
+              <span class="progress-title">GROUT</span>
+              <span class="progress-val" id="progressPercent">0%</span>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-fill" id="progressFill"></div>
+            </div>
+          </div>
+          <div class="progress-metric" id="hazeMetricGroup" title="Sponge Haze Buffing">
+            <div class="metric-label-row">
+              <span class="progress-title">BUFF</span>
+              <span class="progress-val" id="hazePercent">0%</span>
+            </div>
+            <div class="meter-bar meter-bar-clean">
+              <div class="meter-fill meter-fill-clean" id="hazeFill"></div>
+            </div>
+          </div>
         </div>
-        <div class="meter-bar">
-          <div class="meter-fill" id="progressFill"></div>
-        </div>
+        <div class="hud-phase-hint" id="hudPhaseHint">Phase 1: Fill joints with trowel</div>
       </div>
 
       <div class="hud-right">
@@ -194,6 +208,11 @@
       
       <div class="verdict-quote" id="victoryVerdict">
         “Thekedar fell on his knees! You solved it with pure Jugaad!”
+      </div>
+
+      <div class="verdict-metrics" id="victoryMetricsRow">
+        <span class="verdict-pill" id="victoryGroutPill">Joint Grout: 100%</span>
+        <span class="verdict-pill" id="victoryCleanPill">Haze Buffed: 100%</span>
       </div>
 
       <div class="modal-btn-row">

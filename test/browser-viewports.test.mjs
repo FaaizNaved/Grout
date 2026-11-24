@@ -468,8 +468,89 @@ async function runViewportTests() {
   console.log('✔ Genuine Touch drag interaction verified!');
   await client.screenshot(path.join(EVIDENCE_DIR, 'gameplay-touch-filled.png'));
 
+  console.log('\n=== TEST 4: Phase 2 Two-Tool Workflow & Visual Progression Evidence ===');
+  // Emulate spacious desktop for clear visual evidence
+  await client.send('Emulation.setDeviceMetricsOverride', {
+    width: 1200,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false
+  });
+  await client.eval('window.scrollTo(0, 0); window.dispatchEvent(new Event("resize"))');
+  await new Promise(r => setTimeout(r, 400));
+
+  // Step 1: Empty joints before application
+  await client.eval('document.getElementById("btnResetLevel").click()');
+  await new Promise(r => setTimeout(r, 300));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-1-empty-joints.png'));
+  console.log('  Saved Step 1 Screenshot: test/evidence/phase-2-1-empty-joints.png');
+
+  // Step 2: Partially filled joints
+  await client.eval(`(() => {
+    const gap0 = window.groutApp.engine.gaps[0];
+    const halfX = gap0.x1 + (gap0.x2 - gap0.x1) * 0.40;
+    window.groutApp.engine.checkGroutFill({ x: gap0.x1, y: gap0.y1 }, { x: halfX, y: gap0.y1 });
+  })()`);
+  await new Promise(r => setTimeout(r, 300));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-2-partially-filled.png'));
+  console.log('  Saved Step 2 Screenshot: test/evidence/phase-2-2-partially-filled.png');
+
+  // Step 3: Visible grout haze after full trowel application
+  await client.eval(`(() => {
+    for (const gap of window.groutApp.engine.gaps) {
+      window.groutApp.engine.checkGroutFill({ x: gap.x1, y: gap.y1 }, { x: gap.x2, y: gap.y2 });
+    }
+  })()`);
+  await new Promise(r => setTimeout(r, 300));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-3-visible-haze.png'));
+  console.log('  Saved Step 3 Screenshot: test/evidence/phase-2-3-visible-haze.png');
+
+  // Step 4: Sponge cleaning in progress
+  await client.eval(`(() => {
+    document.getElementById('toolSponge').click();
+    const halfPatches = Math.floor(window.groutApp.engine.hazePatches.length * 0.45);
+    for (let i = 0; i < halfPatches; i++) {
+      const p = window.groutApp.engine.hazePatches[i];
+      window.groutApp.engine.checkSpongeCleaning(null, {
+        x: p.u * window.groutApp.engine.width,
+        y: p.v * window.groutApp.engine.height
+      });
+    }
+  })()`);
+  await new Promise(r => setTimeout(r, 300));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-4-sponge-cleaning-progress.png'));
+  console.log('  Saved Step 4 Screenshot: test/evidence/phase-2-4-sponge-cleaning-progress.png');
+
+  // Step 5: Fully filled and cleaned final result
+  await client.eval(`(() => {
+    for (const p of window.groutApp.engine.hazePatches) {
+      window.groutApp.engine.checkSpongeCleaning(null, {
+        x: p.u * window.groutApp.engine.width,
+        y: p.v * window.groutApp.engine.height
+      });
+    }
+  })()`);
+  await new Promise(r => setTimeout(r, 400));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-5-fully-filled-cleaned.png'));
+  console.log('  Saved Step 5 Screenshot: test/evidence/phase-2-5-fully-filled-cleaned.png');
+
+  const finalCheck = await client.eval(`(() => {
+    const m = window.groutApp.engine.getMetrics();
+    return {
+      groutCoverage: m.groutCoverage,
+      hazeCleaning: m.hazeCleaning,
+      isComplete: m.isComplete,
+      engineComplete: window.groutApp.engine.isCompleted
+    };
+  })()`);
+  console.log(`Final Level Completion State: Grout=${finalCheck.groutCoverage}%, Clean=${finalCheck.hazeCleaning}%, isComplete=${finalCheck.isComplete}`);
+  if (!finalCheck.isComplete || !finalCheck.engineComplete) {
+    throw new Error('Level failed to reach complete status after full fill and full sponge cleaning');
+  }
+  console.log('✔ Full two-phase workflow verified in real browser DOM!');
+
   console.log('\n========================================');
-  console.log('ALL PHASE 1.2 REGRESSION ASSERTIONS PASSED!');
+  console.log('ALL PHASE 2 REGRESSION ASSERTIONS PASSED!');
   console.log('========================================\n');
 
   try { await client.send('Page.close'); } catch {}
