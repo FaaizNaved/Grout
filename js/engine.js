@@ -62,11 +62,11 @@ export class GroutEngine {
 
     let newHeight;
     if (isLandscape) {
-      // In short landscape viewports, allocate height so header, HUD, canvas and tool deck
+      // In short landscape viewports, allocate height so header, HUD, stages ribbon, canvas and tool deck
       // fit comfortably within the viewport without vertical scrolling.
-      // Budget: windowH minus header(~32px) + HUD(~28px) + tool-deck(~42px) + paddings(~40px) = ~145px
-      const maxAvailableH = Math.max(windowH - 145, 150);
-      newHeight = Math.min(Math.round(newWidth * 0.52), maxAvailableH, 260);
+      // Budget: windowH minus header(~26px) + HUD(~24px) + stages(~21px) + tool-deck(~32px) + paddings/gaps(~40px) = ~145px
+      const maxAvailableH = Math.max(windowH - 155, 140);
+      newHeight = Math.min(Math.round(newWidth * 0.48), maxAvailableH, 240);
     } else if (windowW <= 680) {
       // In mobile portrait viewports, ensure canvas doesn't push tool deck below initial fold
       const maxPortraitH = Math.max(Math.round(windowH * 0.42), 220);

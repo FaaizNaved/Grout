@@ -1033,16 +1033,16 @@ canvas#gameCanvas {
 
   .page-frame {
     display: grid;
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-columns: minmax(210px, 240px) 1fr;
+    grid-template-rows: auto auto auto 1fr auto;
     grid-template-areas:
-      "header header"
+      "header  header"
       "sidebar hud"
+      "sidebar stages"
       "sidebar canvas"
-      "sidebar deck"
-      "colophon colophon";
-    gap: 6px 12px;
-    padding: 6px 12px 14px;
+      "sidebar deck";
+    gap: 4px 12px;
+    padding: 6px 12px 10px;
     max-width: 960px;
     box-sizing: border-box;
   }
@@ -1123,16 +1123,36 @@ canvas#gameCanvas {
   }
 
   .stages-ribbon {
-    margin-top: 4px;
+    grid-area: stages;
+    margin: 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
     gap: 4px;
     padding: 2px 0;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .stages-ribbon::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .stages-ribbon::-webkit-scrollbar-thumb {
+    background: var(--border-medium);
+    border-radius: 2px;
   }
 
   .level-pill {
-    padding: 2px 6px;
+    padding: 2px 7px;
     font-size: 0.60rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
   }
 
   /* Right column: HUD, Canvas & Tool Deck */
@@ -1236,7 +1256,6 @@ canvas#gameCanvas {
   }
 
   .colophon {
-    grid-area: colophon;
     display: none;
   }
 }

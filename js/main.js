@@ -27,6 +27,7 @@ class GroutApp {
     this.loadLevel(0);
     viralManager.initSoundboard();
     adManager.refreshAds();
+    window.groutApp = this;
   }
 
   setupEngine() {
