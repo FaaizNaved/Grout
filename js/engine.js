@@ -908,6 +908,10 @@ export class GroutEngine {
       if (patch.cleaned) {
         patch.cleaned = false;
         patch.opacity = 0.65;
+        patch.depositedAt = this.now();
+        patch.isCured = false;
+        patch.passesRequired = 1;
+        patch.color = this.groutColor;
         this.cleanedHazeCount = Math.max(0, this.cleanedHazeCount - 1);
         return true;
       } else {

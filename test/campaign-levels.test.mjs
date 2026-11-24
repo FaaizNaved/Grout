@@ -318,6 +318,112 @@ assert.equal(levelFailedCalled, true, 'Countdown expiration via tickCountdown mu
 console.log('  ✓ 30-second curing behavior (3-pass buff requirement) and tickCountdown failure verified.\n');
 
 // ---------------------------------------------------------------------------
+// TEST 4B: Level 4 Cured Haze Re-Soiling Regression Test
+// ---------------------------------------------------------------------------
+console.log('Test 4B: Cured Haze Re-Soiling, Metadata Reset & Multi-Pass Re-Curing');
+engine.loadLevel(lvl4);
+
+// 1. Deposit haze
+const patchX = 160;
+const patchY = 160;
+const dep1 = engine.depositHazePoint(patchX, patchY);
+assert.equal(dep1, true, 'Haze must be deposit-able');
+const p1 = engine.hazePatches[0];
+assert.ok(p1, 'Patch 1 must exist');
+assert.equal(p1.cleaned, false, 'Patch 1 must initially be dirty');
+assert.equal(p1.isCured, false, 'Patch 1 must initially not be cured');
+assert.equal(p1.passesRequired, 1, 'Patch 1 must initially require 1 pass');
+
+// 2. Advance clock beyond 30 seconds
+engine.advanceTime(35000);
+
+// 3. Clean it through three separate sponge strokes
+engine.setTool('sponge');
+
+// Pass 1
+engine.checkSpongeCleaning({ x: patchX - 2, y: patchY - 2 }, { x: patchX + 2, y: patchY + 2 });
+assert.equal(p1.isCured, true, 'Patch 1 must become cured after 35s');
+assert.equal(p1.passesRequired, 2, 'Pass 1 must reduce required passes to 2');
+assert.equal(p1.cleaned, false, 'Pass 1 must not clean cured patch');
+
+// Pass 2
+engine.checkSpongeCleaning({ x: patchX - 2, y: patchY - 2 }, { x: patchX + 2, y: patchY + 2 });
+assert.equal(p1.passesRequired, 1, 'Pass 2 must reduce required passes to 1');
+assert.equal(p1.cleaned, false, 'Pass 2 must not clean cured patch');
+
+// Pass 3
+engine.checkSpongeCleaning({ x: patchX - 2, y: patchY - 2 }, { x: patchX + 2, y: patchY + 2 });
+
+// 4. Verify it is cleaned and has completed its curing lifecycle
+assert.equal(p1.cleaned, true, 'Pass 3 must completely clean the cured patch');
+assert.equal(p1.opacity, 0, 'Cleaned patch must have 0 opacity');
+assert.equal(engine.cleanedHazeCount, 1, 'cleanedHazeCount must be 1');
+
+// 5. Deposit grout over the same location again (re-soiling)
+const initialCleanCount = engine.cleanedHazeCount;
+const reSoiled1 = engine.depositHazePoint(patchX, patchY);
+assert.equal(reSoiled1, true, 'Re-soiling previously cleaned location must return true');
+
+// 6. Verify the patch is dirty, not cured, has one initial pass, restored opacity, and decremented cleaned count
+assert.equal(p1.cleaned, false, 'Re-soiled patch must be dirty (cleaned === false)');
+assert.equal(p1.isCured, false, 'Re-soiled patch must reset isCured to false');
+assert.equal(p1.passesRequired, 1, 'Re-soiled patch must reset passesRequired to 1');
+assert.equal(p1.opacity, 0.65, 'Re-soiled patch must restore its opacity to 0.65');
+assert.equal(engine.cleanedHazeCount, initialCleanCount - 1, 'Re-soiled patch must decrement cleanedHazeCount exactly once');
+
+// 7. Clean it immediately
+engine.checkSpongeCleaning({ x: patchX - 2, y: patchY - 2 }, { x: patchX + 2, y: patchY + 2 });
+
+// 8. Verify it cleans in one pass because it has just been re-soiled
+assert.equal(p1.cleaned, true, 'Freshly re-soiled patch must clean in exactly 1 pass');
+assert.equal(p1.isCured, false, 'Patch was cleaned before 30s so isCured remains false');
+assert.equal(engine.cleanedHazeCount, 1, 'cleanedHazeCount must be restored to 1');
+
+// 9. Repeat the scenario with another patch, advance beyond 30 seconds, and verify that the re-soiled patch now requires three sponge passes
+const patch2X = 220;
+const patch2Y = 220;
+const dep2 = engine.depositHazePoint(patch2X, patch2Y);
+assert.equal(dep2, true);
+const p2 = engine.hazePatches[1];
+assert.ok(p2, 'Patch 2 must exist');
+
+// Advance clock beyond 30 seconds and clean through 3 passes
+engine.advanceTime(35000);
+engine.checkSpongeCleaning({ x: patch2X - 2, y: patch2Y - 2 }, { x: patch2X + 2, y: patch2Y + 2 }); // pass 1 (drops to 2)
+assert.equal(p2.passesRequired, 2);
+engine.checkSpongeCleaning({ x: patch2X - 2, y: patch2Y - 2 }, { x: patch2X + 2, y: patch2Y + 2 }); // pass 2 (drops to 1)
+assert.equal(p2.passesRequired, 1);
+engine.checkSpongeCleaning({ x: patch2X - 2, y: patch2Y - 2 }, { x: patch2X + 2, y: patch2Y + 2 }); // pass 3 (cleans)
+assert.equal(p2.cleaned, true, 'Patch 2 must be cleaned after 3 passes');
+
+// Re-soil Patch 2 over the same location
+const reSoiled2 = engine.depositHazePoint(patch2X, patch2Y);
+assert.equal(reSoiled2, true, 'Re-soiling patch 2 must return true');
+assert.equal(p2.cleaned, false, 'Patch 2 must be dirty again');
+assert.equal(p2.isCured, false, 'Patch 2 must reset isCured');
+assert.equal(p2.passesRequired, 1, 'Patch 2 must reset passesRequired to 1');
+
+// Advance beyond 30 seconds again -> Re-soiled patch must cure again!
+engine.advanceTime(35000);
+
+// Verify that the re-soiled patch now requires three sponge passes
+// Pass 1 on re-cured patch
+engine.checkSpongeCleaning({ x: patch2X - 2, y: patch2Y - 2 }, { x: patch2X + 2, y: patch2Y + 2 });
+assert.equal(p2.isCured, true, 'Aged re-soiled patch must become cured again');
+assert.equal(p2.passesRequired, 2, 'Pass 1 on re-cured patch must leave 2 passes required');
+assert.equal(p2.cleaned, false, 'Pass 1 on re-cured patch must not clean it');
+
+// Pass 2 on re-cured patch
+engine.checkSpongeCleaning({ x: patch2X - 2, y: patch2Y - 2 }, { x: patch2X + 2, y: patch2Y + 2 });
+assert.equal(p2.passesRequired, 1, 'Pass 2 on re-cured patch must leave 1 pass required');
+assert.equal(p2.cleaned, false, 'Pass 2 on re-cured patch must not clean it');
+
+// Pass 3 on re-cured patch
+engine.checkSpongeCleaning({ x: patch2X - 2, y: patch2Y - 2 }, { x: patch2X + 2, y: patch2Y + 2 });
+assert.equal(p2.cleaned, true, 'Pass 3 on re-cured patch must successfully clean it');
+console.log('  ✓ Cured haze re-soiling: metadata reset, 1-pass immediate clean, and 3-pass re-curing lifecycle verified.\n');
+
+// ---------------------------------------------------------------------------
 // TEST 5: Level 5 Ancient Roman Mosaic Puzzle & Fragility System
 // ---------------------------------------------------------------------------
 console.log('Test 5: Level 5 Two-Stage Restoration, Socket Snapping & Fragility');
