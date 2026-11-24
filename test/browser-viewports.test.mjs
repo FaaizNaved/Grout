@@ -338,25 +338,61 @@ async function runViewportTests() {
     const endX = r.left + r.width * 0.85;
     const endY = r.top + r.height * 0.5;
 
+    // 1. Trowel drag using real MouseEvents
     canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: startX, clientY: startY, bubbles: true }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: startX + (endX - startX) * 0.35, clientY: startY, bubbles: true }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: startX + (endX - startX) * 0.70, clientY: startY, bubbles: true }));
-    window.dispatchEvent(new MouseEvent('mousemove', { clientX: endX, clientY: endY, bubbles: true }));
-    window.dispatchEvent(new MouseEvent('mouseup', { clientX: endX, clientY: endY, bubbles: true }));
+    for (let i = 1; i <= 8; i++) {
+      const stepX = startX + (endX - startX) * (i / 8);
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: stepX, clientY: startY, bubbles: true }));
+    }
+    canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: endX, clientY: endY, bubbles: true }));
+
+    const afterTrowelGrout = window.groutApp.engine.getMetrics().groutCoverage;
+    const afterTrowelHaze = window.groutApp.engine.totalHazeDeposited;
+
+    // 2. Sponge buffing via DOM events
+    const spongeBtn = document.querySelector('#spongeToolBtn, #toolSponge');
+    spongeBtn.click();
+    const activeTool = window.groutApp.engine.tool;
+
+    // Buff adjacent hazy tile face with MouseEvents (offset 22px above joint)
+    const buffStartY = startY - 22;
+    const buffEndY = endY - 22;
+    canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: startX, clientY: buffStartY, bubbles: true }));
+    for (let i = 1; i <= 8; i++) {
+      const stepX = startX + (endX - startX) * (i / 8);
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: stepX, clientY: buffStartY, bubbles: true }));
+    }
+    canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: endX, clientY: buffEndY, bubbles: true }));
+
+    const afterBuffMetrics = window.groutApp.engine.getMetrics();
 
     return {
       progress: document.getElementById('progressPercent').textContent,
       strokes: window.groutApp.engine.strokes.length,
       filledPoints: window.groutApp.engine.filledPointsCount,
-      intervalsCount: window.groutApp.engine.gapIntervals.size
+      groutCoverage: afterTrowelGrout,
+      totalHaze: afterTrowelHaze,
+      activeTool: activeTool,
+      cleanedHaze: afterBuffMetrics.cleanedHaze,
+      hazeCleaning: afterBuffMetrics.hazeCleaning,
+      groutAfterBuff: afterBuffMetrics.groutCoverage
     };
   })()`);
 
-  console.log(`Mouse Drag Result: progress=${mouseDragResult.progress}, strokes=${mouseDragResult.strokes}, filledPoints=${mouseDragResult.filledPoints}`);
-  if (mouseDragResult.progress === '0%' || mouseDragResult.filledPoints === 0 || mouseDragResult.strokes === 0) {
-    throw new Error(`Mouse drag interaction failed: progress=${mouseDragResult.progress}, filledPoints=${mouseDragResult.filledPoints}`);
+  console.log(`Mouse Drag Result: Grout=${mouseDragResult.groutCoverage}%, TotalHaze=${mouseDragResult.totalHaze}, Tool=${mouseDragResult.activeTool}, CleanedHaze=${mouseDragResult.cleanedHaze}, CleanPct=${mouseDragResult.hazeCleaning}%`);
+  if (mouseDragResult.groutCoverage === 0 || mouseDragResult.totalHaze === 0) {
+    throw new Error(`Mouse trowel drag failed: coverage=${mouseDragResult.groutCoverage}%, totalHaze=${mouseDragResult.totalHaze}`);
   }
-  console.log('✔ Genuine Mouse drag interaction verified!');
+  if (mouseDragResult.activeTool !== 'sponge') {
+    throw new Error(`Sponge button click failed: activeTool=${mouseDragResult.activeTool}`);
+  }
+  if (mouseDragResult.cleanedHaze === 0 || mouseDragResult.hazeCleaning === 0) {
+    throw new Error(`Mouse sponge buffing failed: cleanedHaze=${mouseDragResult.cleanedHaze}, cleanPct=${mouseDragResult.hazeCleaning}%`);
+  }
+  if (mouseDragResult.groutAfterBuff < mouseDragResult.groutCoverage) {
+    throw new Error(`Sponge reduced grout coverage: ${mouseDragResult.groutAfterBuff}% < ${mouseDragResult.groutCoverage}%`);
+  }
+  console.log('✔ Genuine Mouse drag trowel and sponge buffing interactions verified!');
   await client.screenshot(path.join(EVIDENCE_DIR, 'gameplay-mouse-filled.png'));
 
   console.log('\n=== TEST 3B: Genuine Touch Drag Interaction ===');
@@ -387,6 +423,7 @@ async function runViewportTests() {
   }
 
   const touchDragResult = await client.eval(`(() => {
+    document.getElementById('toolTrowel').click();
     const canvas = document.querySelector('#gameCanvas');
     const r = canvas.getBoundingClientRect();
     const startX = r.left + r.width * 0.15;
@@ -396,19 +433,20 @@ async function runViewportTests() {
 
     function createTouch(x, y) {
       return new Touch({
-        identifier: Date.now(),
+        identifier: Math.floor(Math.random() * 100000),
         target: canvas,
         clientX: x,
         clientY: y,
         pageX: x,
         pageY: y,
-        radiusX: 10,
-        radiusY: 10,
+        radiusX: 12,
+        radiusY: 12,
         rotationAngle: 0,
         force: 1
       });
     }
 
+    // 1. Trowel touch drag
     const tStart = createTouch(startX, startY);
     canvas.dispatchEvent(new TouchEvent('touchstart', {
       bubbles: true,
@@ -418,34 +456,20 @@ async function runViewportTests() {
       changedTouches: [tStart]
     }));
 
-    const tMid1 = createTouch(startX + (endX - startX) * 0.35, startY);
-    window.dispatchEvent(new TouchEvent('touchmove', {
-      bubbles: true,
-      cancelable: true,
-      touches: [tMid1],
-      targetTouches: [tMid1],
-      changedTouches: [tMid1]
-    }));
-
-    const tMid2 = createTouch(startX + (endX - startX) * 0.70, startY);
-    window.dispatchEvent(new TouchEvent('touchmove', {
-      bubbles: true,
-      cancelable: true,
-      touches: [tMid2],
-      targetTouches: [tMid2],
-      changedTouches: [tMid2]
-    }));
+    for (let i = 1; i <= 8; i++) {
+      const stepX = startX + (endX - startX) * (i / 8);
+      const tMove = createTouch(stepX, startY);
+      canvas.dispatchEvent(new TouchEvent('touchmove', {
+        bubbles: true,
+        cancelable: true,
+        touches: [tMove],
+        targetTouches: [tMove],
+        changedTouches: [tMove]
+      }));
+    }
 
     const tEnd = createTouch(endX, endY);
-    window.dispatchEvent(new TouchEvent('touchmove', {
-      bubbles: true,
-      cancelable: true,
-      touches: [tEnd],
-      targetTouches: [tEnd],
-      changedTouches: [tEnd]
-    }));
-
-    window.dispatchEvent(new TouchEvent('touchend', {
+    canvas.dispatchEvent(new TouchEvent('touchend', {
       bubbles: true,
       cancelable: true,
       touches: [],
@@ -453,19 +477,75 @@ async function runViewportTests() {
       changedTouches: [tEnd]
     }));
 
+    const afterTrowelGrout = window.groutApp.engine.getMetrics().groutCoverage;
+    const afterTrowelHaze = window.groutApp.engine.totalHazeDeposited;
+
+    // 2. Sponge touch drag
+    const spongeBtn = document.querySelector('#spongeToolBtn, #toolSponge');
+    spongeBtn.click();
+    const activeTool = window.groutApp.engine.tool;
+
+    const buffStartY = startY - 22;
+    const buffEndY = endY - 22;
+    const tbStart = createTouch(startX, buffStartY);
+    canvas.dispatchEvent(new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [tbStart],
+      targetTouches: [tbStart],
+      changedTouches: [tbStart]
+    }));
+
+    for (let i = 1; i <= 8; i++) {
+      const stepX = startX + (endX - startX) * (i / 8);
+      const tbMove = createTouch(stepX, buffStartY);
+      canvas.dispatchEvent(new TouchEvent('touchmove', {
+        bubbles: true,
+        cancelable: true,
+        touches: [tbMove],
+        targetTouches: [tbMove],
+        changedTouches: [tbMove]
+      }));
+    }
+
+    const tbEnd = createTouch(endX, buffEndY);
+    canvas.dispatchEvent(new TouchEvent('touchend', {
+      bubbles: true,
+      cancelable: true,
+      touches: [],
+      targetTouches: [],
+      changedTouches: [tbEnd]
+    }));
+
+    const afterBuffMetrics = window.groutApp.engine.getMetrics();
+
     return {
       progress: document.getElementById('progressPercent').textContent,
       strokes: window.groutApp.engine.strokes.length,
       filledPoints: window.groutApp.engine.filledPointsCount,
-      intervalsCount: window.groutApp.engine.gapIntervals.size
+      groutCoverage: afterTrowelGrout,
+      totalHaze: afterTrowelHaze,
+      activeTool: activeTool,
+      cleanedHaze: afterBuffMetrics.cleanedHaze,
+      hazeCleaning: afterBuffMetrics.hazeCleaning,
+      groutAfterBuff: afterBuffMetrics.groutCoverage
     };
   })()`);
 
-  console.log(`Touch Drag Result: progress=${touchDragResult.progress}, strokes=${touchDragResult.strokes}, filledPoints=${touchDragResult.filledPoints}`);
-  if (touchDragResult.progress === '0%' || touchDragResult.filledPoints === 0 || touchDragResult.strokes === 0) {
-    throw new Error(`Touch drag interaction failed to register: progress=${touchDragResult.progress}, filledPoints=${touchDragResult.filledPoints}`);
+  console.log(`Touch Drag Result: Grout=${touchDragResult.groutCoverage}%, TotalHaze=${touchDragResult.totalHaze}, Tool=${touchDragResult.activeTool}, CleanedHaze=${touchDragResult.cleanedHaze}, CleanPct=${touchDragResult.hazeCleaning}%`);
+  if (touchDragResult.groutCoverage === 0 || touchDragResult.totalHaze === 0) {
+    throw new Error(`Touch trowel drag failed: coverage=${touchDragResult.groutCoverage}%, totalHaze=${touchDragResult.totalHaze}`);
   }
-  console.log('✔ Genuine Touch drag interaction verified!');
+  if (touchDragResult.activeTool !== 'sponge') {
+    throw new Error(`Touch sponge button click failed: activeTool=${touchDragResult.activeTool}`);
+  }
+  if (touchDragResult.cleanedHaze === 0 || touchDragResult.hazeCleaning === 0) {
+    throw new Error(`Touch sponge buffing failed: cleanedHaze=${touchDragResult.cleanedHaze}, cleanPct=${touchDragResult.hazeCleaning}%`);
+  }
+  if (touchDragResult.groutAfterBuff < touchDragResult.groutCoverage) {
+    throw new Error(`Touch sponge reduced grout coverage: ${touchDragResult.groutAfterBuff}% < ${touchDragResult.groutCoverage}%`);
+  }
+  console.log('✔ Genuine Touch drag trowel and sponge buffing interactions verified!');
   await client.screenshot(path.join(EVIDENCE_DIR, 'gameplay-touch-filled.png'));
 
   console.log('\n=== TEST 4: Phase 2 Two-Tool Workflow & Visual Progression Evidence ===');
@@ -485,54 +565,90 @@ async function runViewportTests() {
   await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-1-empty-joints.png'));
   console.log('  Saved Step 1 Screenshot: test/evidence/phase-2-1-empty-joints.png');
 
-  // Step 2: Partially filled joints
+  // Step 2: Joint filled with grout + haze visible on surrounding tiles (driven by real DOM MouseEvents)
   await client.eval(`(() => {
+    const canvas = document.querySelector('#gameCanvas');
+    const r = canvas.getBoundingClientRect();
     const gap0 = window.groutApp.engine.gaps[0];
-    const halfX = gap0.x1 + (gap0.x2 - gap0.x1) * 0.40;
-    window.groutApp.engine.checkGroutFill({ x: gap0.x1, y: gap0.y1 }, { x: halfX, y: gap0.y1 });
+    const startX = r.left + gap0.x1;
+    const startY = r.top + gap0.y1;
+    const endX = r.left + gap0.x2;
+    const endY = r.top + gap0.y2;
+
+    document.getElementById('toolTrowel').click();
+    canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: startX, clientY: startY, bubbles: true }));
+    for (let i = 1; i <= 15; i++) {
+      const stepX = startX + (endX - startX) * (i / 15);
+      const stepY = startY + (endY - startY) * (i / 15);
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: stepX, clientY: stepY, bubbles: true }));
+    }
+    canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: endX, clientY: endY, bubbles: true }));
   })()`);
   await new Promise(r => setTimeout(r, 300));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-2-joint-filled-haze-visible.png'));
   await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-2-partially-filled.png'));
-  console.log('  Saved Step 2 Screenshot: test/evidence/phase-2-2-partially-filled.png');
+  console.log('  Saved Step 2 Screenshot: test/evidence/phase-2-2-joint-filled-haze-visible.png');
 
-  // Step 3: Visible grout haze after full trowel application
+  // Step 3: Partially cleaned haze with sponge (driven by real DOM MouseEvents)
   await client.eval(`(() => {
-    for (const gap of window.groutApp.engine.gaps) {
-      window.groutApp.engine.checkGroutFill({ x: gap.x1, y: gap.y1 }, { x: gap.x2, y: gap.y2 });
+    const canvas = document.querySelector('#gameCanvas');
+    const r = canvas.getBoundingClientRect();
+    const gap0 = window.groutApp.engine.gaps[0];
+    const startX = r.left + gap0.x1;
+    const startY = r.top + gap0.y1 - 20; // Tile face above gap 0
+    const endX = r.left + (gap0.x1 + (gap0.x2 - gap0.x1) * 0.5);
+    const endY = startY;
+
+    document.querySelector('#spongeToolBtn, #toolSponge').click();
+    canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: startX, clientY: startY, bubbles: true }));
+    for (let i = 1; i <= 10; i++) {
+      const stepX = startX + (endX - startX) * (i / 10);
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: stepX, clientY: startY, bubbles: true }));
     }
+    canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: endX, clientY: endY, bubbles: true }));
   })()`);
   await new Promise(r => setTimeout(r, 300));
-  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-3-visible-haze.png'));
-  console.log('  Saved Step 3 Screenshot: test/evidence/phase-2-3-visible-haze.png');
-
-  // Step 4: Sponge cleaning in progress
-  await client.eval(`(() => {
-    document.getElementById('toolSponge').click();
-    const halfPatches = Math.floor(window.groutApp.engine.hazePatches.length * 0.45);
-    for (let i = 0; i < halfPatches; i++) {
-      const p = window.groutApp.engine.hazePatches[i];
-      window.groutApp.engine.checkSpongeCleaning(null, {
-        x: p.u * window.groutApp.engine.width,
-        y: p.v * window.groutApp.engine.height
-      });
-    }
-  })()`);
-  await new Promise(r => setTimeout(r, 300));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-3-partially-cleaned-haze.png'));
   await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-4-sponge-cleaning-progress.png'));
-  console.log('  Saved Step 4 Screenshot: test/evidence/phase-2-4-sponge-cleaning-progress.png');
+  console.log('  Saved Step 3 Screenshot: test/evidence/phase-2-3-partially-cleaned-haze.png');
 
-  // Step 5: Fully filled and cleaned final result
+  // Step 4: Fully filled and cleaned final result
   await client.eval(`(() => {
+    const canvas = document.querySelector('#gameCanvas');
+    const r = canvas.getBoundingClientRect();
+
+    // Fill all remaining gaps with real DOM MouseEvents
+    document.getElementById('toolTrowel').click();
+    for (const gap of window.groutApp.engine.gaps) {
+      const sx = r.left + gap.x1;
+      const sy = r.top + gap.y1;
+      const ex = r.left + gap.x2;
+      const ey = r.top + gap.y2;
+      canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: sx, clientY: sy, bubbles: true }));
+      for (let i = 1; i <= 10; i++) {
+        canvas.dispatchEvent(new MouseEvent('mousemove', {
+          clientX: sx + (ex - sx) * (i / 10),
+          clientY: sy + (ey - sy) * (i / 10),
+          bubbles: true
+        }));
+      }
+      canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: ex, clientY: ey, bubbles: true }));
+    }
+
+    // Clean all haze with sponge via real DOM MouseEvents across patches
+    document.querySelector('#spongeToolBtn, #toolSponge').click();
     for (const p of window.groutApp.engine.hazePatches) {
-      window.groutApp.engine.checkSpongeCleaning(null, {
-        x: p.u * window.groutApp.engine.width,
-        y: p.v * window.groutApp.engine.height
-      });
+      const px = r.left + p.u * window.groutApp.engine.width;
+      const py = r.top + p.v * window.groutApp.engine.height;
+      canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: px, clientY: py, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: px + 4, clientY: py + 4, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: px + 4, clientY: py + 4, bubbles: true }));
     }
   })()`);
   await new Promise(r => setTimeout(r, 400));
+  await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-4-fully-cleaned-inspected.png'));
   await client.screenshot(path.join(EVIDENCE_DIR, 'phase-2-5-fully-filled-cleaned.png'));
-  console.log('  Saved Step 5 Screenshot: test/evidence/phase-2-5-fully-filled-cleaned.png');
+  console.log('  Saved Step 4 Screenshot: test/evidence/phase-2-4-fully-cleaned-inspected.png');
 
   const finalCheck = await client.eval(`(() => {
     const m = window.groutApp.engine.getMetrics();

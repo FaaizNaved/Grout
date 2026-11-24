@@ -286,11 +286,16 @@ export class GroutEngine {
 
   getPointerPos(e) {
     const rect = this.canvas.getBoundingClientRect();
-    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+    const touch = (e.touches && e.touches.length > 0)
+      ? e.touches[0]
+      : ((e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : null);
+    const clientX = touch ? touch.clientX : (e.clientX !== undefined ? e.clientX : 0);
+    const clientY = touch ? touch.clientY : (e.clientY !== undefined ? e.clientY : 0);
+    const scaleX = rect.width && this.width ? this.width / rect.width : 1;
+    const scaleY = rect.height && this.height ? this.height / rect.height : 1;
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
     };
   }
 
@@ -363,13 +368,18 @@ export class GroutEngine {
     };
 
     this.canvas.addEventListener('mousedown', onStart);
+    this.canvas.addEventListener('mousemove', onMove);
     window.addEventListener('mousemove', onMove);
+    this.canvas.addEventListener('mouseup', onEnd);
     window.addEventListener('mouseup', onEnd);
     this.canvas.addEventListener('mouseleave', onLeave);
 
     this.canvas.addEventListener('touchstart', onStart, { passive: false });
+    this.canvas.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchmove', onMove, { passive: false });
+    this.canvas.addEventListener('touchend', onEnd);
     window.addEventListener('touchend', onEnd);
+    this.canvas.addEventListener('touchcancel', onEnd);
     window.addEventListener('touchcancel', onEnd);
   }
 
@@ -503,9 +513,44 @@ export class GroutEngine {
     }
   }
 
+  distToSegmentSq(px, py, x1, y1, x2, y2) {
+    const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+    if (l2 === 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
+    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const projX = x1 + t * (x2 - x1);
+    const projY = y1 + t * (y2 - y1);
+    return (px - projX) * (px - projX) + (py - projY) * (py - projY);
+  }
+
+  isNearAnyGap(px, py, maxDist = 28) {
+    if (!this.gaps || this.gaps.length === 0) return false;
+    for (const gap of this.gaps) {
+      const threshold = (gap.width || 24) * 0.5 + maxDist;
+      const dSq = this.distToSegmentSq(px, py, gap.x1, gap.y1, gap.x2, gap.y2);
+      if (dSq <= threshold * threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  isInsideAnyJoint(px, py) {
+    if (!this.gaps || this.gaps.length === 0) return false;
+    for (const gap of this.gaps) {
+      const jointHalfWidth = (gap.width || 24) * 0.45;
+      const dSq = this.distToSegmentSq(px, py, gap.x1, gap.y1, gap.x2, gap.y2);
+      if (dSq < jointHalfWidth * jointHalfWidth) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   depositHazePoint(x, y) {
-    if (!this.width || !this.height) return;
-    if (x < 10 || x > this.width - 10 || y < 10 || y > this.height - 10) return;
+    if (!this.width || !this.height) return false;
+    if (x < 10 || x > this.width - 10 || y < 10 || y > this.height - 10) return false;
+    if (this.isInsideAnyJoint(x, y)) return false;
 
     const u = x / this.width;
     const v = y / this.height;
@@ -521,8 +566,10 @@ export class GroutEngine {
         patch.cleaned = false;
         patch.opacity = 0.65;
         this.cleanedHazeCount = Math.max(0, this.cleanedHazeCount - 1);
+        return true;
       } else {
         patch.opacity = Math.min(patch.opacity + 0.15, 0.85);
+        return false;
       }
     } else {
       const patch = {
@@ -536,27 +583,57 @@ export class GroutEngine {
       this.hazeGrid.set(key, patch);
       this.hazePatches.push(patch);
       this.totalHazeDeposited++;
+      return true;
     }
   }
 
   depositHazeAround(cx, cy) {
-    const offsets = [
-      { dx: 18, dy: -8 },
-      { dx: -18, dy: 8 },
-      { dx: 12, dy: 16 },
-      { dx: -14, dy: -14 }
-    ];
-    for (const off of offsets) {
-      this.depositHazePoint(cx + off.dx + (Math.random() - 0.5) * 6, cy + off.dy + (Math.random() - 0.5) * 6);
+    if (!this.isNearAnyGap(cx, cy, 28)) return false;
+
+    let nearestGap = null;
+    let minDSq = Infinity;
+    for (const gap of this.gaps) {
+      const dSq = this.distToSegmentSq(cx, cy, gap.x1, gap.y1, gap.x2, gap.y2);
+      if (dSq < minDSq) {
+        minDSq = dSq;
+        nearestGap = gap;
+      }
     }
+
+    let anyChanged = false;
+    if (nearestGap) {
+      const gdx = nearestGap.x2 - nearestGap.x1;
+      const gdy = nearestGap.y2 - nearestGap.y1;
+      const glen = Math.hypot(gdx, gdy) || 1;
+      const nx = -gdy / glen;
+      const ny = gdx / glen;
+      const halfW = (nearestGap.width || 24) * 0.5;
+
+      const offsets = [
+        { mult: 1, dist: halfW + 6 + Math.random() * 8, tang: -8 + Math.random() * 16 },
+        { mult: -1, dist: halfW + 6 + Math.random() * 8, tang: -8 + Math.random() * 16 },
+        { mult: 1, dist: halfW + 12 + Math.random() * 10, tang: -12 + Math.random() * 24 },
+        { mult: -1, dist: halfW + 12 + Math.random() * 10, tang: -12 + Math.random() * 24 }
+      ];
+
+      for (const off of offsets) {
+        const hx = cx + (gdx / glen) * off.tang + nx * (off.mult * off.dist);
+        const hy = cy + (gdy / glen) * off.tang + ny * (off.mult * off.dist);
+        if (this.depositHazePoint(hx, hy)) {
+          anyChanged = true;
+        }
+      }
+    }
+    return anyChanged;
   }
 
   depositHazeAlongStroke(p1, p2) {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const dist = Math.hypot(dx, dy);
-    if (dist < 4) return;
+    if (dist < 4) return false;
 
+    let anyChanged = false;
     const nx = -dy / dist;
     const ny = dx / dist;
 
@@ -566,30 +643,42 @@ export class GroutEngine {
       const px = p1.x + dx * t;
       const py = p1.y + dy * t;
 
-      const offsetDist1 = 16 + Math.random() * 12;
-      const offsetDist2 = 16 + Math.random() * 12;
+      // Only deposit haze if this stroke point intersects or borders an actual grout joint
+      if (!this.isNearAnyGap(px, py, 28)) {
+        continue;
+      }
 
-      this.depositHazePoint(px + nx * offsetDist1, py + ny * offsetDist1);
-      this.depositHazePoint(px - nx * offsetDist2, py - ny * offsetDist2);
+      let nearestGap = null;
+      let minDSq = Infinity;
+      for (const gap of this.gaps) {
+        const dSq = this.distToSegmentSq(px, py, gap.x1, gap.y1, gap.x2, gap.y2);
+        if (dSq < minDSq) {
+          minDSq = dSq;
+          nearestGap = gap;
+        }
+      }
+      const halfW = nearestGap ? (nearestGap.width || 24) * 0.5 : 12;
+
+      const offsetDist1 = halfW + 6 + Math.random() * 10;
+      const offsetDist2 = halfW + 6 + Math.random() * 10;
+
+      if (this.depositHazePoint(px + nx * offsetDist1, py + ny * offsetDist1)) {
+        anyChanged = true;
+      }
+      if (this.depositHazePoint(px - nx * offsetDist2, py - ny * offsetDist2)) {
+        anyChanged = true;
+      }
     }
+    return anyChanged;
   }
 
   checkGroutFill(p1, p2) {
     if (this.isCompleted) return;
 
     let newlyFilled = 0;
+    let hazeChanged = false;
     const thresholdDist = 26;
     const thresholdDistSq = thresholdDist * thresholdDist;
-
-    const distToSegmentSq = (px, py, x1, y1, x2, y2) => {
-      const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
-      if (l2 === 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
-      let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
-      t = Math.max(0, Math.min(1, t));
-      const projX = x1 + t * (x2 - x1);
-      const projY = y1 + t * (y2 - y1);
-      return (px - projX) * (px - projX) + (py - projY) * (py - projY);
-    };
 
     const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
 
@@ -597,7 +686,7 @@ export class GroutEngine {
       if (!pt.filled) {
         let dSq;
         if (hasSegment) {
-          dSq = distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y);
+          dSq = this.distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y);
         } else {
           dSq = (pt.x - p2.x) * (pt.x - p2.x) + (pt.y - p2.y) * (pt.y - p2.y);
         }
@@ -609,15 +698,23 @@ export class GroutEngine {
           const ptStart = Math.max(0, (pt.index - 0.5) / pt.totalSteps);
           const ptEnd = Math.min(1, (pt.index + 0.5) / pt.totalSteps);
           this.addIntervalToGap(pt.gapIdx, ptStart, ptEnd);
-          this.depositHazeAround(pt.x, pt.y);
+          if (this.depositHazeAround(pt.x, pt.y)) {
+            hazeChanged = true;
+          }
         }
       }
     });
 
     if (hasSegment) {
-      this.depositHazeAlongStroke(p1, p2);
+      if (this.depositHazeAlongStroke(p1, p2)) {
+        hazeChanged = true;
+      }
     } else {
-      this.depositHazeAround(p2.x, p2.y);
+      if (this.isNearAnyGap(p2.x, p2.y, 28)) {
+        if (this.depositHazeAround(p2.x, p2.y)) {
+          hazeChanged = true;
+        }
+      }
     }
 
     if (newlyFilled > 0) {
@@ -634,7 +731,10 @@ export class GroutEngine {
         const praise = praiseList[Math.floor(Math.random() * praiseList.length)];
         this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, p2.x, p2.y - 20);
       }
+    }
 
+    // Immediately synchronize metrics and notify progress listeners on any state change
+    if (newlyFilled > 0 || hazeChanged) {
       this.notifyProgress();
       this.checkLevelCompletion();
     }
@@ -648,16 +748,6 @@ export class GroutEngine {
     const spongeRadius = 36;
     const spongeRadiusSq = spongeRadius * spongeRadius;
 
-    const distToSegmentSq = (px, py, x1, y1, x2, y2) => {
-      const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
-      if (l2 === 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
-      let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
-      t = Math.max(0, Math.min(1, t));
-      const projX = x1 + t * (x2 - x1);
-      const projY = y1 + t * (y2 - y1);
-      return (px - projX) * (px - projX) + (py - projY) * (py - projY);
-    };
-
     const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
 
     for (let i = 0; i < this.hazePatches.length; i++) {
@@ -668,7 +758,7 @@ export class GroutEngine {
       const py = patch.v * this.height;
 
       const dSq = hasSegment
-        ? distToSegmentSq(px, py, p1.x, p1.y, p2.x, p2.y)
+        ? this.distToSegmentSq(px, py, p1.x, p1.y, p2.x, p2.y)
         : (px - p2.x) * (px - p2.x) + (py - p2.y) * (py - p2.y);
 
       if (dSq <= spongeRadiusSq) {

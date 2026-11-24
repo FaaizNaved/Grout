@@ -187,11 +187,14 @@ class GroutApp {
       this.engine.setTool('trowel');
     });
 
-    document.getElementById('toolSponge').addEventListener('click', (e) => {
-      document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      this.engine.setTool('sponge');
-    });
+    const spongeBtn = document.getElementById('spongeToolBtn') || document.getElementById('toolSponge');
+    if (spongeBtn) {
+      spongeBtn.addEventListener('click', (e) => {
+        document.querySelectorAll('.deck-btn').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.engine.setTool('sponge');
+      });
+    }
 
     // Reset current level
     document.getElementById('btnResetLevel').addEventListener('click', () => {
