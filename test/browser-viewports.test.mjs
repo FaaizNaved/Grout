@@ -288,7 +288,7 @@ async function runViewportTests() {
       if (metrics.toolDeck.bottom > vp.h) {
         throw new Error(`[Assertion Failed in ${vp.name}] Tool deck bottom (${metrics.toolDeck.bottom}px) exceeds viewport height (${vp.h}px) by ${metrics.toolDeck.bottom - vp.h}px`);
       }
-      if (!metrics.levelSelector.visible || metrics.levelSelector.pillsCount < 9) {
+      if (!metrics.levelSelector.visible || metrics.levelSelector.pillsCount < 6) {
         throw new Error(`[Assertion Failed in ${vp.name}] Level selector is not accessible or missing stage pills (found ${metrics.levelSelector.pillsCount})`);
       }
       if (metrics.scrollWidth > vp.w + 1) {
@@ -666,39 +666,37 @@ async function runViewportTests() {
   }
   console.log('✔ Full two-phase workflow verified in real browser DOM!');
 
-  console.log('\n=== TEST 5: Phase 3 Authentic Soundboard & Level 9 Endless ASMR Mode ===');
+  console.log('\n=== TEST 5: Authentic Soundboard & Five-Level Campaign Verification ===');
 
-  // Step 1: Open and verify redesigned Soundboard Modal
+  // Step 1: Open and verify redesigned Soundboard Modal with 4 categories
   await client.eval('document.getElementById("btnOpenSoundboard").click()');
   await new Promise(r => setTimeout(r, 400));
 
   const soundboardState = await client.eval(`(() => {
     const modal = document.getElementById('soundboardModal');
     const chips = Array.from(document.querySelectorAll('.sound-chip'));
-    const verifiedChips = document.querySelectorAll('.chip-status-pill.verified');
-    const slotChips = document.querySelectorAll('.chip-status-pill.slot');
+    const awaitingChips = document.querySelectorAll('.chip-status-pill.awaiting, .chip-status-pill.slot');
     return {
       isOpen: modal.classList.contains('active'),
       totalChips: chips.length,
-      verifiedCount: verifiedChips.length,
-      slotCount: slotChips.length
+      awaitingCount: awaitingChips.length
     };
   })()`);
 
-  console.log(`Soundboard State: Open=${soundboardState.isOpen}, Chips=${soundboardState.totalChips}, Verified=${soundboardState.verifiedCount}, Slots=${soundboardState.slotCount}`);
-  if (!soundboardState.isOpen || soundboardState.totalChips !== 10 || soundboardState.verifiedCount !== 4 || soundboardState.slotCount !== 6) {
+  console.log(`Soundboard State: Open=${soundboardState.isOpen}, Chips=${soundboardState.totalChips}, Awaiting=${soundboardState.awaitingCount}`);
+  if (!soundboardState.isOpen || soundboardState.totalChips !== 8) {
     throw new Error(`Soundboard modal validation failed: ${JSON.stringify(soundboardState)}`);
   }
 
-  // Click a verified meme sound chip and verify playing visual state
+  // Click signature meme sound chip and verify playing visual state
   await client.eval(`(() => {
-    const chip = document.querySelector('.sound-chip[data-sound="grout_bhar_denge"]');
+    const chip = document.querySelector('.sound-chip[data-sound="intro_grout_bhar_denge"]');
     if (chip) chip.click();
   })()`);
   await new Promise(r => setTimeout(r, 200));
 
   const playingState = await client.eval(`(() => {
-    const chip = document.querySelector('.sound-chip[data-sound="grout_bhar_denge"]');
+    const chip = document.querySelector('.sound-chip[data-sound="intro_grout_bhar_denge"]');
     const icon = chip.querySelector('.chip-play-icon');
     return {
       isPlaying: chip.classList.contains('is-playing'),
@@ -706,63 +704,175 @@ async function runViewportTests() {
     };
   })()`);
   console.log(`Playing Chip State: isPlaying=${playingState.isPlaying}, icon='${playingState.iconText}'`);
-  await client.screenshot(path.join(EVIDENCE_DIR, 'soundboard-redesigned.png'));
-  console.log('  Saved Screenshot: test/evidence/soundboard-redesigned.png');
+  await client.screenshot(path.join(EVIDENCE_DIR, 'soundboard-4-categories.png'));
+  console.log('  Saved Screenshot: test/evidence/soundboard-4-categories.png');
 
   // Close Soundboard Modal
   await client.eval('document.getElementById("btnCloseSoundboard").click()');
   await new Promise(r => setTimeout(r, 300));
 
-  // Step 2: Level 9 Endless ASMR Mode Verification (AUD-06)
-  await client.eval('window.groutApp.loadLevel(8)'); // 0-indexed index 8 = Level 9
+  // Step 2: Level 2 The Hexagon Bathroom Floor Verification
+  console.log('\n--- Verifying Level 2: Hexagon Bathroom Floor ---');
+  await client.eval('window.groutApp.loadLevel(1)'); // Index 1 = Level 2
   await new Promise(r => setTimeout(r, 400));
 
-  const level9State = await client.eval(`(() => {
+  const level2State = await client.eval(`(() => {
+    const lvlNum = document.getElementById('levelNumber').textContent;
+    const hasBlowout = window.groutApp.engine.currentLevel.hasBlowoutMechanic;
+    const gapsCount = window.groutApp.engine.gaps.length;
+    return { lvlNum, hasBlowout, gapsCount };
+  })()`);
+  console.log(`Level 2 State: Header="${level2State.lvlNum}", hasBlowout=${level2State.hasBlowout}, gaps=${level2State.gapsCount}`);
+  if (!level2State.hasBlowout || level2State.gapsCount < 12) {
+    throw new Error(`Level 2 Hexagon validation failed: ${JSON.stringify(level2State)}`);
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-2-hexagon.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-2-hexagon.png');
+
+  // Step 3: Level 3 The Moroccan Mosaic & Defect Failure Modal
+  console.log('\n--- Verifying Level 3: Moroccan Mosaic & Defect Failure Modal ---');
+  await client.eval('window.groutApp.loadLevel(2)'); // Index 2 = Level 3
+  await new Promise(r => setTimeout(r, 400));
+
+  const level3State = await client.eval(`(() => {
+    const lvlNum = document.getElementById('levelNumber').textContent;
+    const hasColorMatching = window.groutApp.engine.currentLevel.hasColorMatching;
+    return { lvlNum, hasColorMatching };
+  })()`);
+  console.log(`Level 3 State: Header="${level3State.lvlNum}", hasColorMatching=${level3State.hasColorMatching}`);
+  if (!level3State.hasColorMatching) {
+    throw new Error(`Level 3 Moroccan Mosaic validation failed: ${JSON.stringify(level3State)}`);
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-3-moroccan.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-3-moroccan.png');
+
+  // Trigger Color Mismatch failure to test Failure Modal
+  await client.eval(`(() => {
+    window.groutApp.engine.triggerLevelFailure(
+      "COLOR MISMATCH FAILURE",
+      "Wrong color applied to Star section! Moroccan carpet harmony violated."
+    );
+  })()`);
+  await new Promise(r => setTimeout(r, 300));
+
+  const failureState = await client.eval(`(() => {
+    const modal = document.getElementById('failureModal');
+    const title = document.getElementById('failureTitle').textContent;
+    return {
+      isOpen: modal.classList.contains('active'),
+      title
+    };
+  })()`);
+  console.log(`Failure Modal State: Open=${failureState.isOpen}, Title="${failureState.title}"`);
+  if (!failureState.isOpen) {
+    throw new Error('Failure modal did not open upon triggerLevelFailure');
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-3-failure-modal.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-3-failure-modal.png');
+
+  // Dismiss Failure Modal via Retry button
+  await client.eval('document.getElementById("btnRetryLevel").click()');
+  await new Promise(r => setTimeout(r, 300));
+
+  // Step 4: Level 4 The Speed-Run Café Counter (Curing Timer)
+  console.log('\n--- Verifying Level 4: Speed-Run Café Counter & Timer HUD ---');
+  await client.eval('window.groutApp.loadLevel(3)'); // Index 3 = Level 4
+  await new Promise(r => setTimeout(r, 400));
+
+  const level4State = await client.eval(`(() => {
+    const lvlNum = document.getElementById('levelNumber').textContent;
+    const timerPill = document.getElementById('levelTimerPill');
+    const timerVal = document.getElementById('timerValue').textContent;
+    const timerVisible = timerPill && !timerPill.classList.contains('hidden');
+    return { lvlNum, timerVisible, timerVal };
+  })()`);
+  console.log(`Level 4 State: Header="${level4State.lvlNum}", timerVisible=${level4State.timerVisible}, val="${level4State.timerVal}"`);
+  if (!level4State.timerVisible) {
+    throw new Error('Level 4 Countdown Timer pill was not visible in HUD');
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-4-cafe-timer.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-4-cafe-timer.png');
+
+  // Step 5: Level 5 Masterpiece Restoration & Grand Finale
+  console.log('\n--- Verifying Level 5: Masterpiece Restoration & Grand Finale ---');
+  await client.eval('window.groutApp.loadLevel(4)'); // Index 4 = Level 5
+  await new Promise(r => setTimeout(r, 400));
+
+  const level5State = await client.eval(`(() => {
+    const lvlNum = document.getElementById('levelNumber').textContent;
+    const fragilityPill = document.getElementById('fragilityPill');
+    const fragVal = document.getElementById('fragilityValue').textContent;
+    const fragVisible = fragilityPill && !fragilityPill.classList.contains('hidden');
+    const engine = window.groutApp.engine;
+    return {
+      lvlNum,
+      fragVisible,
+      fragVal,
+      stage: engine.restorationStage,
+      looseCount: engine.loosePieces.length,
+      socketsCount: engine.sockets.length
+    };
+  })()`);
+  console.log(`Level 5 State: Header="${level5State.lvlNum}", fragVisible=${level5State.fragVisible}, stage=${level5State.stage}, pieces=${level5State.looseCount}`);
+  if (!level5State.fragVisible || level5State.stage !== 1 || level5State.looseCount !== 4) {
+    throw new Error(`Level 5 Restoration validation failed: ${JSON.stringify(level5State)}`);
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-5-restoration.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-5-restoration.png');
+
+  // Complete Level 5 to trigger Grand Campaign Completion Modal
+  const completionEval = await client.eval(`(() => {
+    const engine = window.groutApp.engine;
+    engine.loosePieces.forEach(p => {
+      p.x = p.targetX;
+      p.y = p.targetY;
+      p.placed = true;
+    });
+    engine.restorationStage = 2;
+    engine.samplePoints.forEach(p => { p.filled = true; });
+    engine.filledPointsCount = engine.samplePoints.length;
+    for (let i = 0; i < 20; i++) {
+      engine.depositHazePoint(30 + i * 15, 25);
+    }
+    engine.hazePatches.forEach(p => { p.cleaned = true; });
+    engine.cleanedHazeCount = engine.totalHazeDeposited;
+    const mBefore = engine.getMetrics();
+    engine.checkLevelCompletion();
+    const modal = document.getElementById('campaignCompleteModal');
+    return {
+      mBefore,
+      isCompleted: engine.isCompleted,
+      modalActive: modal ? modal.classList.contains('active') : false
+    };
+  })()`);
+  console.log(`Grand Campaign Finale Modal State: Open=${completionEval.modalActive}, Metrics:`, JSON.stringify(completionEval.mBefore));
+  if (!completionEval.modalActive) {
+    throw new Error('Grand Campaign Completion modal did not open upon Level 5 completion: ' + JSON.stringify(completionEval));
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-5-grand-finale.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-5-grand-finale.png');
+
+  // Step 6: Transition into Bonus Endless ASMR Zen Mode
+  console.log('\n--- Verifying Transition into Bonus Endless ASMR Mode ---');
+  await client.eval('document.getElementById("btnEnterEndlessMode").click()');
+  await new Promise(r => setTimeout(r, 400));
+
+  const endlessState = await client.eval(`(() => {
     const lvlNum = document.getElementById('levelNumber').textContent;
     const isEndless = window.groutApp.engine.currentLevel.isEndless;
     const wave = window.groutApp.engine.endlessWave;
-    return { lvlNum, isEndless, wave };
+    const grandModalActive = document.getElementById('campaignCompleteModal').classList.contains('active');
+    return { lvlNum, isEndless, wave, grandModalActive };
   })()`);
-  console.log(`Level 9 State: Header="${level9State.lvlNum}", isEndless=${level9State.isEndless}, Wave=${level9State.wave}`);
-  if (!level9State.isEndless || level9State.wave !== 1) {
-    throw new Error(`Level 9 Endless configuration failed: ${JSON.stringify(level9State)}`);
+  console.log(`Endless Mode State: Header="${endlessState.lvlNum}", isEndless=${endlessState.isEndless}, Wave=${endlessState.wave}, GrandModalClosed=${!endlessState.grandModalActive}`);
+  if (!endlessState.isEndless || endlessState.grandModalActive) {
+    throw new Error(`Bonus Endless Mode transition failed: ${JSON.stringify(endlessState)}`);
   }
-  await client.screenshot(path.join(EVIDENCE_DIR, 'level-9-endless-mode.png'));
-  console.log('  Saved Screenshot: test/evidence/level-9-endless-mode.png');
-
-  // Step 3: Simulate wave completion and assert wave advancement without game-over modal
-  await client.eval(`(() => {
-    const engine = window.groutApp.engine;
-    engine.samplePoints.forEach(pt => {
-      pt.filled = true;
-      engine.filledPointsCount++;
-    });
-    for (let i = 0; i < 10; i++) {
-      engine.depositHazePoint(120 + i * 15, 120 + i * 15);
-    }
-    engine.hazePatches.forEach(p => {
-      p.cleaned = true;
-      engine.cleanedHazeCount++;
-    });
-    engine.checkLevelCompletion();
-  })()`);
-  await new Promise(r => setTimeout(r, 400));
-
-  const wave2State = await client.eval(`(() => {
-    const wave = window.groutApp.engine.endlessWave;
-    const victoryActive = document.getElementById('victoryModal').classList.contains('active');
-    return { wave, victoryActive };
-  })()`);
-  console.log(`Wave Advance State: Wave=${wave2State.wave}, VictoryModalActive=${wave2State.victoryActive}`);
-  if (wave2State.wave !== 2 || wave2State.victoryActive) {
-    throw new Error(`Endless wave progression failed: wave=${wave2State.wave}, victoryActive=${wave2State.victoryActive}`);
-  }
-  await client.screenshot(path.join(EVIDENCE_DIR, 'level-9-wave-2-advanced.png'));
-  console.log('  Saved Screenshot: test/evidence/level-9-wave-2-advanced.png');
-  console.log('✔ Phase 3 Authentic Soundboard and Endless Mode verified in real browser DOM!');
+  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-6-endless.png'));
+  console.log('  Saved Screenshot: test/evidence/campaign-level-6-endless.png');
 
   console.log('\n========================================');
-  console.log('ALL PHASE 2 & 3 REGRESSION ASSERTIONS PASSED!');
+  console.log('ALL FIVE-LEVEL CAMPAIGN & VIEWPORT ASSERTIONS PASSED!');
   console.log('========================================\n');
 
   try { await client.send('Page.close'); } catch {}

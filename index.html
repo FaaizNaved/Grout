@@ -46,6 +46,14 @@
 <body>
 
   <div class="page-frame">
+    <!-- Opening Voice Autoplay Fallback Prompt -->
+    <div id="autoplayPrompt" class="autoplay-prompt hidden">
+      <button id="btnAutoplayDismiss" class="autoplay-btn" title="Tap to hear opening voice">
+        <span class="prompt-speaker-icon">🔊</span>
+        <span class="prompt-text">Tap to hear the Mistri ("Isme Grout Bhar Denge!")</span>
+      </button>
+    </div>
+
     <!-- Minimalist Header -->
     <header class="site-header">
       <div class="brand" onclick="location.reload()">
@@ -130,6 +138,16 @@
       </div>
 
       <div class="hud-right">
+        <!-- Level 4 Countdown Timer Pill -->
+        <div class="timer-pill hidden" id="levelTimerPill" title="Curing & Shift Deadline">
+          <span class="timer-icon">⏱️</span>
+          <span class="timer-val" id="timerValue">75s</span>
+        </div>
+        <!-- Level 5 Fragility Pill -->
+        <div class="fragility-pill hidden" id="fragilityPill" title="Roman Mosaic Fragility">
+          <span class="fragility-label">FRAGILITY</span>
+          <span class="fragility-val" id="fragilityValue">0%</span>
+        </div>
         <div class="streak-pill" id="comboPill" title="Continuous ASMR Stroke Combo">
           <span class="streak-label">STREAK</span>
           <span class="streak-val">1x</span>
@@ -260,7 +278,56 @@
     </div>
   </div>
 
-  <!-- MODAL 3: Viral Soundboard -->
+  <!-- MODAL: Level Defect / Failure Modal -->
+  <div class="modal-backdrop" id="failureModal">
+    <div class="modal-card modal-card-failure">
+      <div class="card-ornament ornament-failure">⚠️ JOB DEFECT DETECTED</div>
+      <h3 class="modal-heading heading-failure" id="failureTitle">Level Failed</h3>
+      <p class="modal-sub" id="failureReason">Thekedar noticed a critical structural or aesthetic flaw.</p>
+      
+      <div class="verdict-quote quote-failure" id="failureQuote">
+        “Paisa barbaad ho gaya! Start over with better craftsmanship.”
+      </div>
+
+      <div class="modal-btn-row">
+        <button id="btnRetryLevel" class="btn-solid btn-retry">
+          Retry Assignment ↺
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Grand Campaign Finale (Level 5 Masterpiece Restoration Approved) -->
+  <div class="modal-backdrop" id="campaignCompleteModal">
+    <div class="modal-card modal-card-campaign">
+      <div class="card-ornament ornament-campaign">🏛️ ARCHAEOLOGICAL TRIUMPH</div>
+      <h3 class="modal-heading">Masterpiece Restoration Complete!</h3>
+      <p class="modal-sub">UNESCO & The Indian Council of Jugaad have officially certified Babu Mistri's universal grouting mastery.</p>
+      
+      <div class="verdict-quote">
+        “From rookie subway tile repairs to ancient Roman mosaic conservator — NO GAP COULD RESIST YOUR GROUT!”
+      </div>
+
+      <div class="verdict-metrics">
+        <span class="verdict-pill">5 / 5 CAMPAIGN STAGES CONQUERED</span>
+        <span class="verdict-pill">RANK: MASTER CONSERVATOR MISTRI</span>
+      </div>
+
+      <div class="modal-btn-row">
+        <button id="btnOpenGrandDiploma" class="btn-solid">
+          Download Master Conservator Diploma 📜
+        </button>
+        <button id="btnEnterEndlessMode" class="btn-outline">
+          Enter Endless ASMR Zen Mode ✨
+        </button>
+        <button id="btnShareCampaignWhatsApp" class="btn-ghost">
+          Brag on WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Viral Soundboard (Authentic Recorded Meme Voices - Zero AI TTS) -->
   <div class="modal-backdrop" id="soundboardModal">
     <div class="modal-card modal-card-soundboard">
       <div class="modal-card-header">
@@ -270,128 +337,122 @@
       </div>
 
       <div class="soundboard-scroll-area">
-        <!-- Section 1: Bundled & Verified Meme Audio -->
+        <!-- Category 1: Signature GROUT Voice -->
         <div class="soundboard-section-header">
-          <span class="section-label">Verified Recorded Meme Audio</span>
-          <span class="section-badge verified-badge">4 Active</span>
+          <span class="section-label">Signature GROUT Voice</span>
+          <span class="section-badge">Opening Theme</span>
         </div>
         <div class="sound-grid">
-          <button class="sound-chip" data-sound="grout_bhar_denge" title="Click to play / stop">
+          <button class="sound-chip" data-sound="intro_grout_bhar_denge" title="Click to play / stop">
             <div class="chip-top">
               <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill verified">VERIFIED</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
             </div>
             <div class="chip-content">
               <span class="chip-title">"Isme Grout Bhar Denge!"</span>
               <span class="chip-hindi">“टेंशन मत लो साब, इसमें ग्राउट भर देंगे!”</span>
-              <span class="chip-desc">The original Mistri defense anthem</span>
-            </div>
-          </button>
-          <button class="sound-chip" data-sound="mistri_op" title="Click to play / stop">
-            <div class="chip-top">
-              <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill verified">VERIFIED</span>
-            </div>
-            <div class="chip-content">
-              <span class="chip-title">"Thekedar Shocked, Mistri Rocked!"</span>
-              <span class="chip-hindi">“ठेकेदार शॉक्ड, मिस्त्री रॉक्ड!”</span>
-              <span class="chip-desc">Victory celebration fanfare</span>
-            </div>
-          </button>
-          <button class="sound-chip" data-sound="kya_bana_diya" title="Click to play / stop">
-            <div class="chip-top">
-              <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill verified">VERIFIED</span>
-            </div>
-            <div class="chip-content">
-              <span class="chip-title">"Bhai Ye Kya Bana Diya?!"</span>
-              <span class="chip-hindi">“भाई ये क्या बना दिया तूने?!”</span>
-              <span class="chip-desc">Inspector site despair on crooked tiles</span>
-            </div>
-          </button>
-          <button class="sound-chip" data-sound="sukoon_asmr" title="Click to play / stop">
-            <div class="chip-top">
-              <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill verified">VERIFIED</span>
-            </div>
-            <div class="chip-content">
-              <span class="chip-title">"Sukoon Hi Sukoon"</span>
-              <span class="chip-hindi">“बस अब सुकून ही सुकून है!”</span>
-              <span class="chip-desc">100% clean ASMR buff satisfaction</span>
+              <span class="chip-desc">The original Mistri defense anthem (intro-grout-bhar-denge.mp3)</span>
             </div>
           </button>
         </div>
 
-        <!-- Section 2: Curated Indian Meme Slots -->
-        <div class="soundboard-section-header" style="margin-top: 16px;">
-          <span class="section-label">Curated Dialogue Slots (User Drop-In)</span>
-          <span class="section-badge slot-badge">6 Slots</span>
+        <!-- Category 2: Streak Reactions -->
+        <div class="soundboard-section-header" style="margin-top: 14px;">
+          <span class="section-label">Streak Reactions</span>
+          <span class="section-badge">5x Combo Trigger</span>
         </div>
         <div class="sound-grid">
-          <button class="sound-chip" data-sound="heavy_driver" title="Click to play / drop-in slot">
+          <button class="sound-chip" data-sound="laura_phir_agya_tu" title="Click to play / stop">
             <div class="chip-top">
               <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill slot">SLOT READY</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
             </div>
             <div class="chip-content">
-              <span class="chip-title">"Bete Mauj Kardi!"</span>
-              <span class="chip-hindi">“अरे बेटाजी मौज कर दी! तुम तो हैवी ड्राइवर निकले!”</span>
-              <span class="chip-desc">12x continuous combo streak praise</span>
+              <span class="chip-title">"Laura, Phir Aa Gaya Tu!"</span>
+              <span class="chip-hindi">“लौंडे, फिर आ गया तू!”</span>
+              <span class="chip-desc">5x continuous combo streak reaction (laura-phir-agya-tu.mp3)</span>
             </div>
           </button>
-          <button class="sound-chip" data-sound="paisa_barbaad" title="Click to play / drop-in slot">
+        </div>
+
+        <!-- Category 3: Level Reactions -->
+        <div class="soundboard-section-header" style="margin-top: 14px;">
+          <span class="section-label">Level Reactions</span>
+          <span class="section-badge">Campaign Mechanics</span>
+        </div>
+        <div class="sound-grid">
+          <button class="sound-chip" data-sound="hexagon_challenge" title="Click to play / stop">
             <div class="chip-top">
               <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill slot">SLOT READY</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
+            </div>
+            <div class="chip-content">
+              <span class="chip-title">"3-Way Hexagon Joints!"</span>
+              <span class="chip-hindi">“ये 3-वे हेक्सागोन जोड़ में हाथ कांप जाएगा!”</span>
+              <span class="chip-desc">Level 2 Hexagon floor challenge (hexagon-challenge.mp3)</span>
+            </div>
+          </button>
+          <button class="sound-chip" data-sound="mosaic_color_reaction" title="Click to play / stop">
+            <div class="chip-top">
+              <span class="chip-play-icon">▶</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
+            </div>
+            <div class="chip-content">
+              <span class="chip-title">"Moroccan Color Harmony"</span>
+              <span class="chip-hindi">“रंग गलत मत लगाना, मोरक्कन डिज़ाइन है!”</span>
+              <span class="chip-desc">Level 3 star & cross color matching (mosaic-color-reaction.mp3)</span>
+            </div>
+          </button>
+          <button class="sound-chip" data-sound="cafe_timer_warning" title="Click to play / stop">
+            <div class="chip-top">
+              <span class="chip-play-icon">▶</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
+            </div>
+            <div class="chip-content">
+              <span class="chip-title">"30-Second Curing Alert"</span>
+              <span class="chip-hindi">“जल्दी कर भाई! 30 सेकंड में ग्राउट पत्थर बन जाएगा!”</span>
+              <span class="chip-desc">Level 4 Speed-run curing countdown warning (cafe-timer-warning.mp3)</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Category 4: Victory & Failure Outcomes -->
+        <div class="soundboard-section-header" style="margin-top: 14px;">
+          <span class="section-label">Victory & Failure Outcomes</span>
+          <span class="section-badge">Game State</span>
+        </div>
+        <div class="sound-grid">
+          <button class="sound-chip" data-sound="level_complete_mistri_op" title="Click to play / stop">
+            <div class="chip-top">
+              <span class="chip-play-icon">▶</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
+            </div>
+            <div class="chip-content">
+              <span class="chip-title">"Thekedar Shocked, Mistri Rocked!"</span>
+              <span class="chip-hindi">“ठेकेदार शॉक्ड, मिस्त्री रॉक्ड!”</span>
+              <span class="chip-desc">Level victory celebration fanfare (level-complete-mistri-op.mp3)</span>
+            </div>
+          </button>
+          <button class="sound-chip" data-sound="level_failure_reaction" title="Click to play / stop">
+            <div class="chip-top">
+              <span class="chip-play-icon">▶</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
             </div>
             <div class="chip-content">
               <span class="chip-title">"Paisa Barbaad BC!"</span>
               <span class="chip-hindi">“पैसा बर्बाद हो गया!”</span>
-              <span class="chip-desc">Level reset / wipe reaction</span>
+              <span class="chip-desc">Failure on Blowout, Curing, Color, or Shatter (level-failure-reaction.mp3)</span>
             </div>
           </button>
-          <button class="sound-chip" data-sound="gajab_beizzati" title="Click to play / drop-in slot">
+          <button class="sound-chip" data-sound="restoration_victory" title="Click to play / stop">
             <div class="chip-top">
               <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill slot">SLOT READY</span>
+              <span class="chip-status-pill awaiting">AWAITING FILE (Drop in public/audio/voices/)</span>
             </div>
             <div class="chip-content">
-              <span class="chip-title">"Gajab Beizzati Hai Yaar"</span>
-              <span class="chip-hindi">“गज़ब बेइज़्ज़ती है यार!”</span>
-              <span class="chip-desc">Dirty tiles / 0% buff warning</span>
-            </div>
-          </button>
-          <button class="sound-chip" data-sound="control_uday" title="Click to play / drop-in slot">
-            <div class="chip-top">
-              <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill slot">SLOT READY</span>
-            </div>
-            <div class="chip-content">
-              <span class="chip-title">"Control Uday Control"</span>
-              <span class="chip-hindi">“कंट्रोल उदय कंट्रोल!”</span>
-              <span class="chip-desc">Excessive rapid scrubbing warning</span>
-            </div>
-          </button>
-          <button class="sound-chip" data-sound="kehna_kya_chahte_ho" title="Click to play / drop-in slot">
-            <div class="chip-top">
-              <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill slot">SLOT READY</span>
-            </div>
-            <div class="chip-content">
-              <span class="chip-title">"Arrey Kehna Kya Chahte Ho?!"</span>
-              <span class="chip-hindi">“अरे कहना क्या चाहते हो?!”</span>
-              <span class="chip-desc">Complex geometry challenge</span>
-            </div>
-          </button>
-          <button class="sound-chip" data-sound="bilkul_riks_nahi" title="Click to play / drop-in slot">
-            <div class="chip-top">
-              <span class="chip-play-icon">▶</span>
-              <span class="chip-status-pill slot">SLOT READY</span>
-            </div>
-            <div class="chip-content">
-              <span class="chip-title">"Bilkul Riks Nahi Lene Ka"</span>
-              <span class="chip-hindi">“अपुन को बिल्कुल रिक्स नहीं लेने का!”</span>
-              <span class="chip-desc">Final 5% meticulous buffing</span>
+              <span class="chip-title">"UNESCO Restoration Grand Finale"</span>
+              <span class="chip-hindi">“2000 साल पुराना रोमन मोज़ेक बचा लिया!”</span>
+              <span class="chip-desc">Level 5 Boss restoration victory anthem (restoration-victory.mp3)</span>
             </div>
           </button>
         </div>

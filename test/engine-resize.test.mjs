@@ -101,7 +101,7 @@ console.log(`  Sample Points: ${initialTotal}`);
 console.log(`  Filled Points: ${initialFilledCount}`);
 console.log(`  Exact Coverage: ${initialCoverage.toFixed(2)}%`);
 console.log(`  Canonical Intervals for Gap 0:`, JSON.stringify(engine.gapIntervals.get(0)));
-assert(initialCoverage > 20 && initialCoverage < 50, 'Initial coverage should be between 20% and 50%');
+assert(initialCoverage > 5 && initialCoverage < 50, 'Initial coverage should be between 5% and 50%');
 
 // Resize 1: 50% scale reduction (720x560 -> 360x280)
 mockCanvas.parentElement.getBoundingClientRect = () => ({ width: 360, height: 280, top: 0, left: 0, bottom: 280, right: 360 });

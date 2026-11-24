@@ -1,58 +1,50 @@
-# GROUT — Authentic Meme Culture & Audio Asset Sources
+# GROUT — Authentic Meme Culture & Voice Asset Architecture
 
-This document tracks all Indian meme references, audio assets, contextual game roles, copyright status, and attribution requirements for **GROUT** ("Isme Grout Bhar Denge").
-
----
-
-## Legal & Compliance Principles
-
-1. **Zero AI Speech Synthesis:** Browser-generated synthetic voices (`window.speechSynthesis`, `SpeechSynthesisUtterance`) have been completely purged from the codebase.
-2. **Authentic Cultural Identity:** Dialogue and reactions are anchored in genuine Indian construction culture, thekedar-mistri dynamics, and viral Hindi/Hinglish internet memes.
-3. **Strict Copyright Protection:** No copyrighted audio from commercial films, television shows, or private creators is pirated or bundled without documentation. Slots for commercial/licensed meme dialogues are architected as ready asset slots for user-provided files.
-4. **Graceful Asset Architecture:** The audio playback system preloads, throttles, respects mute state, stops previous clips, and gracefully handles missing audio slots without throwing runtime errors or disrupting gameplay.
+This document tracks all Indian meme voice references, procedural sound effects, contextual game roles, copyright principles, and asset placement rules for **GROUT** ("Isme Grout Bhar Denge").
 
 ---
 
-## Curated Indian Meme References
+## 1. Legal & Audio Architecture Principles
 
-| Reference ID | Meme Title / Quote | Original Context / Source | Game Role & Trigger Moment | Audio Filename | License / Permission Status |
+1. **Zero AI Speech Synthesis / Zero TTS:** Browser-generated synthetic voices (`window.speechSynthesis`, `SpeechSynthesisUtterance`) and synthetic voice clones are completely purged from this repository.
+2. **User-Provided Voice Recording Slots:** All spoken meme dialogue assets reside in `public/audio/voices/` as designated user-provided slots. Players/maintainers download and provide authentic recordings directly. No copyrighted film, television, creator, or meme audio is pirated or illegally bundled.
+3. **Procedural Web Audio Sound Effects:** Physical tactile sounds (wet grout extrusion squelches, metallic trowel smoothing scrapes, limestone sponge buffing squeaks, harmonic combo chimes, brass fanfare) are synthesized entirely in real-time via the Web Audio API on native oscillator, biquad filter, and gain nodes. These are procedural ASMR sound effects, not spoken meme dialogue.
+4. **Single-Voice Concurrency Lock:** Only one spoken voice clip plays at any time. Triggering any voice immediately halts any currently playing voice.
+5. **Graceful Asset Absence:** Missing voice files in `public/audio/voices/` never throw unhandled exceptions or interrupt gameplay. The soundboard visually indicates whether each voice file is `INSTALLED` or `AWAITING FILE (Drop in public/audio/voices/)`.
+
+---
+
+## 2. Central Voice Asset Manifest (`public/audio/voices/`)
+
+| Voice Event ID | Filename | Spoken Meme Reference / Quote | Original Cultural Context | Game Trigger Moment | Soundboard Section |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `grout_bhar_denge` | **"Isme Grout Bhar Denge!"** | The original viral Indian construction video where a contractor shows a massive 2-inch gap between tiles and the mistri confidently declares: *"Koi na saab, isme grout bhar denge!"* | Central game theme; first joint completed; soundboard centerpiece. | `meme-grout-bhar-denge.mp3` | **Bundled** (Project Signature Audio). Core creative identity of GROUT. |
-| `thekedar_shocked` | **"Thekedar Shocked, Mistri Rocked!"** | Popular Hindi construction meme celebrating raw desi jugaad outperforming textbook engineering calculations. | Level completion celebration fanfare; victory modal. | `meme-thekedar-shocked.mp3` | **Bundled** (Desi Mistri Victory Audio). Open attribution. |
-| `kya_bana_diya` | **"Bhai Ye Kya Bana Diya?!"** | Viral home inspector reel walking into a site with crooked stairs and nonsensical architectural angles. | Level start on irregular/crooked tile layouts (e.g. Level 4, Level 5). | `meme-kya-bana-diya.mp3` | **Bundled** (Site Inspection Despair Audio). |
-| `sukoon_asmr` | **"Sukoon Hi Sukoon"** | Classic Hindi relaxation phrase representing absolute inner peace and satisfaction. | 100% haze cleaning completion; pure ASMR buffing soundboard. | `meme-sukoon-asmr.mp3` | **Bundled** (Artisanal ASMR Chime & Sponge Sound). |
-| `heavy_driver` | **"Bete Mauj Kardi! (Heavy Driver)"** | The legendary 2020 Indian viral paragliding video by Vipin Kumar (*"Arrey betaji, mauj kardi! Tum toh bade heavy driver nikle!"*). | Awarded when reaching a 12x or 24x continuous trowel joint combo. | `meme-heavy-driver.mp3` | **User Asset Slot Ready** (Slot open for user-provided clip; gracefully silent if absent). |
-| `paisa_barbaad` | **"Paisa Barbaad BC!"** | Legendary CarryMinati rant reaction used universally across Indian social media when an effort collapses. | Reset level button click; wiping progress. | `meme-paisa-barbaad.mp3` | **User Asset Slot Ready** (Pop-culture quote slot). |
-| `gajab_beizzati` | **"Gajab Beizzati Hai Yaar"** | Famous scene from TVF's *Panchayat* (Season 1) spoken by character Vinod when snubbed. | Triggered if player fills 100% grout but attempts to finish with 0% haze cleaning. | `meme-gajab-beizzati.mp3` | **User Asset Slot Ready** (Slot open for licensed OTT quote). |
-| `control_uday` | **"Control Uday Control"** | Nana Patekar's iconic self-restraint mantra from the comedy film *Welcome* (2007). | Triggered when player moves mouse too rapidly, spilling excessive haze. | `meme-control-uday.mp3` | **User Asset Slot Ready** (Slot open for user-provided clip). |
-| `kehna_kya_chahte_ho` | **"Arrey Kehna Kya Chahte Ho?!"** | Omi Vaidya (Chatur / Silencer) reacting to incomprehensible jargon in *3 Idiots* (2009). | Loading complex geometry (Pisa Tower, Hexagons, Broken Tile). | `meme-kehna-kya-chahte-ho.mp3` | **User Asset Slot Ready** (Slot open for user-provided clip). |
-| `bilkul_riks_nahi` | **"Bilkul Riks Nahi Lene Ka"** | Paresh Rawal's timeless Babu Rao dialogue from *Hera Pheri* (2000) on taking zero chances. | Cleaning the final 5% remaining haze to achieve 100% perfection. | `meme-bilkul-riks-nahi.mp3` | **User Asset Slot Ready** (Slot open for user-provided clip). |
+| `intro_grout_bhar_denge` | `intro-grout-bhar-denge.mp3` | **"Isme Grout Bhar Denge!"** | The original viral Indian construction clip where contractor inspects a massive gap and the mistri replies: *"Koi na saab, isme grout bhar denge!"* | Page open / refresh; opening interaction prompt; soundboard signature clip. | Signature GROUT Voice |
+| `laura_phir_agya_tu` | `laura-phir-agya-tu.mp3` | **"Laura, Phir Aa Gaya Tu!"** | Viral reaction meme expressing exasperated amusement when an indomitable character returns. | Continuous streak reaches 5x combo threshold (fires once per streak). | Streak Reactions |
+| `level_complete_mistri_op` | `level-complete-mistri-op.mp3` | **"Thekedar Shocked, Mistri Rocked!"** | Celebratory construction meme cheering pure desi jugaad outperforming textbook engineering. | Level completion victory modal. | Victory & Failure Reactions |
+| `level_failure_reaction` | `level-failure-reaction.mp3` | **"Paisa Barbaad BC!"** | Iconic CarryMinati frustration reaction to a total catastrophe. | Level failure: blowout penalty, color mismatch, cured cement timeout, or shattered fragility. | Victory & Failure Reactions |
+| `hexagon_challenge` | `hexagon-challenge.mp3` | **"Thekedar: 3-Way Hexagon Joints!"** | Site inspection despair at intricate hexagonal multi-angle floor joints. | Level 2 (Hexagon Bathroom Floor) start or blowout recovery. | Level Reactions |
+| `mosaic_color_reaction` | `mosaic-color-reaction.mp3` | **"Moroccan Color Harmony"** | Artisan master warning: *"Rang galat mat lagao, Moroccan carpet jaisa design hai!"* | Level 3 (Moroccan Mosaic) color selection / section transition. | Level Reactions |
+| `cafe_timer_warning` | `cafe-timer-warning.mp3` | **"30-Second Curing Alert"** | Mistri panic: *"Jaldi kar bhai! Grout 30 second me pathar ban jayega!"* | Level 4 (Speed-Run Café Counter) when surface grout transitions to cured state. | Level Reactions |
+| `restoration_victory` | `restoration-victory.mp3` | **"UNESCO Restoration Victory"** | Archaeological chief stunned as ancient Roman mosaic is restored with pure grout jugaad. | Level 5 (Masterpiece Restoration) completing Stage 1 puzzle + Stage 2 grouting. | Victory & Failure Reactions |
 
 ---
 
-## Audio Asset Architecture & Directory Structure
+## 3. Procedural Web Audio API Sound Effects (Non-Voice)
 
-All audio files reside in `public/audio/memes/`:
+These are procedural physics-based sound effects generated in real-time in `js/audio.js`, completely decoupled from the voice player:
 
-```
-public/
-  audio/
-    memes/
-      meme-grout-bhar-denge.mp3
-      meme-thekedar-shocked.mp3
-      meme-kya-bana-diya.mp3
-      meme-sukoon-asmr.mp3
-      meme-heavy-driver.mp3        [User Drop-In Slot]
-      meme-paisa-barbaad.mp3       [User Drop-In Slot]
-      meme-gajab-beizzati.mp3      [User Drop-In Slot]
-      meme-control-uday.mp3        [User Drop-In Slot]
-      meme-kehna-kya-chahte-ho.mp3 [User Drop-In Slot]
-      meme-bilkul-riks-nahi.mp3    [User Drop-In Slot]
-```
+| Sound Function | Audio Node Pipeline | Purpose / Gameplay Trigger |
+| :--- | :--- | :--- |
+| `audio.playSquelch(intensity)` | Bandpass filtered pink noise + sine modulation ($120\text{Hz} \to 280\text{Hz}$) | Wet grout extrusion along joint cavity when dragging trowel. |
+| `audio.playScrape()` | Sawtooth oscillator ($340\text{Hz} \to 250\text{Hz}$) + high-Q bandpass ($1500\text{Hz}$) | Metallic trowel blade smoothing over stone edge; tile snapping into puzzle socket. |
+| `audio.playSponge()` | Dual-frequency modulated sine ($620\text{Hz} \to 990\text{Hz} \to 550\text{Hz}$) | Wet limestone sponge friction buffing surface haze. |
+| `audio.playChime(noteIndex)` | Pure sine wave on pentatonic frequencies ($261\text{Hz} \to 784\text{Hz}$) with gentle decay | Positive feedback on combo increments and clean tile passes. |
+| `audio.playFanfare()` | Polyphonic chord progression ($[C, E, G], [E, G, C], [F, A, C], [G, B, D, G]$) | Level completion celebratory musical flourish. |
+| `audio.playErrorTone()` | Low frequency square wave ($110\text{Hz} \to 65\text{Hz}$) with rapid tremolo | Blowout warning, wrong-color application, or fragility damage penalty. |
 
-### Player Guarantees
-1. **Single-Voice Lock:** Playing any meme clip immediately interrupts and stops any previously playing meme voice.
-2. **Procedural Independence:** Web Audio procedural SFX (wet squelches, metallic trowel scrapes, sponge squeaks, combo chimes) run on independent oscillators and continue uninterrupted.
-3. **Mute Compliance:** All meme playback checks `audio.muted` and halts immediately if muted.
-4. **Spam Throttling:** Contextual gameplay triggers enforce a minimum 5-second cooldown to ensure voice lines feel earned and deliberate rather than repetitive.
-5. **Missing File Resilience:** If a user asset slot has not yet been populated by the user, the player catches the 404 cleanly, logs an informational notice, and updates the soundboard slot with `[Slot Ready — Drop file in public/audio/memes/]` without throwing an unhandled exception or breaking gameplay.
+---
+
+## 4. How to Test Voice File Integration
+
+Place any standard `.mp3` file into `public/audio/voices/` (e.g. `public/audio/voices/intro-grout-bhar-denge.mp3`).
+The web application automatically detects installed files and flips their status pill from `AWAITING FILE` to `INSTALLED` in the Desi Soundboard library.

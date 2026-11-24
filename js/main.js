@@ -30,6 +30,19 @@ class GroutApp {
     this.loadLevel(0);
     viralManager.initSoundboard();
     adManager.refreshAds();
+
+    // Opening voice autoplay attempt with graceful banner fallback
+    audio.attemptOpeningVoice(
+      () => {
+        const promptEl = document.getElementById('autoplayPrompt');
+        if (promptEl) promptEl.classList.remove('hidden');
+      },
+      () => {
+        const promptEl = document.getElementById('autoplayPrompt');
+        if (promptEl) promptEl.classList.add('hidden');
+      }
+    );
+
     window.groutApp = this;
   }
 
@@ -45,11 +58,57 @@ class GroutApp {
       if (levelNumEl) levelNumEl.textContent = `ENDLESS ASMR — WAVE ${wave}`;
       this.showToast(`✨ Wave ${wave} Reached! Sukoon hi sukoon.`);
     };
+
+    this.engine.onFailure = (level, title, reason) => {
+      const failureModal = document.getElementById('failureModal');
+      const failureTitle = document.getElementById('failureTitle');
+      const failureReason = document.getElementById('failureReason');
+      const failureQuote = document.getElementById('failureQuote');
+
+      if (failureTitle) failureTitle.textContent = title || 'Level Failed';
+      if (failureReason) failureReason.textContent = reason || 'Craftsmanship defect detected.';
+      if (failureQuote) {
+        const failureQuotes = [
+          `“Paisa barbaad ho gaya! Start over with better craftsmanship.”`,
+          `“Thekedar cancelled the invoice on the spot! Clean up and re-try.”`,
+          `“One hasty move ruined the finish! Master mistris take no shortcuts.”`
+        ];
+        failureQuote.textContent = failureQuotes[Math.floor(Math.random() * failureQuotes.length)];
+      }
+      if (failureModal) failureModal.classList.add('active');
+    };
+
+    this.engine.onTimerTick = (seconds) => {
+      const timerPill = document.getElementById('levelTimerPill');
+      const timerVal = document.getElementById('timerValue');
+      if (timerPill && timerVal) {
+        timerVal.textContent = `${seconds}s`;
+        if (seconds <= 10) {
+          timerPill.classList.add('urgent');
+        } else {
+          timerPill.classList.remove('urgent');
+        }
+      }
+    };
+
+    this.engine.onFragilityChange = (pct) => {
+      const fragilityPill = document.getElementById('fragilityPill');
+      const fragilityVal = document.getElementById('fragilityValue');
+      if (fragilityPill && fragilityVal) {
+        fragilityVal.textContent = `${pct}%`;
+        if (pct >= 60) {
+          fragilityPill.classList.add('danger');
+        } else {
+          fragilityPill.classList.remove('danger');
+        }
+      }
+    };
   }
 
   setupPalette() {
     const container = document.getElementById('swatchesContainer');
     if (!container) return;
+    container.innerHTML = '';
 
     GROUT_PALETTES.forEach((p, idx) => {
       const btn = document.createElement('button');
@@ -74,7 +133,9 @@ class GroutApp {
     LEVELS.forEach((level, idx) => {
       const pill = document.createElement('button');
       pill.className = `level-pill ${idx === this.currentLevelIndex ? 'active' : ''}`;
-      pill.textContent = `${level.id}. ${level.name.split(' (')[0]}`;
+      pill.textContent = level.id === 6
+        ? `BONUS: Endless ASMR`
+        : `${level.id}. ${level.name.split(' (')[0]}`;
       pill.addEventListener('click', () => {
         this.loadLevel(idx);
       });
@@ -89,20 +150,54 @@ class GroutApp {
     this.currentLevelIndex = index;
     const level = LEVELS[index];
 
-    // Dismiss victory modal if open
+    // Dismiss modals if open
     const victoryModal = document.getElementById('victoryModal');
     if (victoryModal) victoryModal.classList.remove('active');
+    const failureModal = document.getElementById('failureModal');
+    if (failureModal) failureModal.classList.remove('active');
+    const campaignCompleteModal = document.getElementById('campaignCompleteModal');
+    if (campaignCompleteModal) campaignCompleteModal.classList.remove('active');
 
     // Update level HUD
     const levelNumEl = document.getElementById('levelNumber');
     if (levelNumEl) {
-      levelNumEl.textContent = level.id === 9
-        ? `STAGE 9 / ${LEVELS.length} (ENDLESS ASMR)`
-        : `STAGE ${level.id} / ${LEVELS.length}`;
+      levelNumEl.textContent = level.id === 6
+        ? `BONUS STAGE: ENDLESS ASMR`
+        : `STAGE ${level.id} / 5`;
     }
 
-    if (level.id === 4 || level.id === 8) {
-      audio.triggerMemeSound('kya_bana_diya');
+    // Toggle HUD Pills for Level 4 Timer and Level 5 Fragility
+    const timerPill = document.getElementById('levelTimerPill');
+    const timerVal = document.getElementById('timerValue');
+    if (timerPill) {
+      if (level.hasCuringTimer) {
+        timerPill.classList.remove('hidden');
+        timerPill.classList.remove('urgent');
+        if (timerVal) timerVal.textContent = `${level.overallDeadlineSec || 75}s`;
+      } else {
+        timerPill.classList.add('hidden');
+      }
+    }
+
+    const fragilityPill = document.getElementById('fragilityPill');
+    const fragilityVal = document.getElementById('fragilityValue');
+    if (fragilityPill) {
+      if (level.hasRestorationPuzzle) {
+        fragilityPill.classList.remove('hidden');
+        fragilityPill.classList.remove('danger');
+        if (fragilityVal) fragilityVal.textContent = '0%';
+      } else {
+        fragilityPill.classList.add('hidden');
+      }
+    }
+
+    // Contextual sound reactions for campaign levels
+    if (level.id === 2) {
+      audio.triggerMemeSound('hexagon_challenge');
+    } else if (level.id === 3) {
+      audio.triggerMemeSound('mosaic_color_reaction');
+    } else if (level.id === 4) {
+      audio.triggerMemeSound('cafe_timer_warning');
     }
 
     const levelTitleEl = document.getElementById('levelTitle');
@@ -166,6 +261,15 @@ class GroutApp {
   }
 
   onComplete(level, metrics) {
+    if (level.id === 5 || level.isBossLevel) {
+      const campaignCompleteModal = document.getElementById('campaignCompleteModal');
+      if (campaignCompleteModal) {
+        campaignCompleteModal.classList.add('active');
+      }
+      audio.triggerMemeSound('restoration_victory');
+      return;
+    }
+
     const victoryModal = document.getElementById('victoryModal');
     const verdictEl = document.getElementById('victoryVerdict');
     const victoryLevelTitle = document.getElementById('victoryLevelTitle');
@@ -221,7 +325,18 @@ class GroutApp {
       this.showToast('Joint cleared. Ready for fresh paste.');
     });
 
-    // Next Level button
+    // Retry Level button (Failure Modal)
+    const btnRetry = document.getElementById('btnRetryLevel');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', () => {
+        const failureModal = document.getElementById('failureModal');
+        if (failureModal) failureModal.classList.remove('active');
+        this.loadLevel(this.currentLevelIndex);
+        this.showToast('Level restarted. Make Mistri proud!');
+      });
+    }
+
+    // Next Level button (Victory Modal)
     document.getElementById('btnNextLevel').addEventListener('click', () => {
       document.getElementById('victoryModal').classList.remove('active');
       adManager.showLevelTransitionAd(() => {
@@ -229,6 +344,45 @@ class GroutApp {
         this.loadLevel(nextIdx);
       });
     });
+
+    // Opening voice banner dismiss / play
+    const btnAutoplayDismiss = document.getElementById('btnAutoplayDismiss');
+    if (btnAutoplayDismiss) {
+      btnAutoplayDismiss.addEventListener('click', () => {
+        const promptEl = document.getElementById('autoplayPrompt');
+        if (promptEl) promptEl.classList.add('hidden');
+        audio.triggerMemeSound('intro_grout_bhar_denge');
+      });
+    }
+
+    // Grand Campaign Modal Buttons
+    const btnOpenGrandDiploma = document.getElementById('btnOpenGrandDiploma');
+    if (btnOpenGrandDiploma) {
+      btnOpenGrandDiploma.addEventListener('click', () => {
+        const campaignModal = document.getElementById('campaignCompleteModal');
+        if (campaignModal) campaignModal.classList.remove('active');
+        const nameInput = document.getElementById('certNameInput');
+        if (nameInput) nameInput.value = 'Master Conservator Babu Mistri';
+        openCertificateModal();
+      });
+    }
+
+    const btnEnterEndlessMode = document.getElementById('btnEnterEndlessMode');
+    if (btnEnterEndlessMode) {
+      btnEnterEndlessMode.addEventListener('click', () => {
+        const campaignModal = document.getElementById('campaignCompleteModal');
+        if (campaignModal) campaignModal.classList.remove('active');
+        this.loadLevel(5); // Level 6 (index 5: Endless Mode)
+        this.showToast('Welcome to Endless Zen ASMR Mode ✨');
+      });
+    }
+
+    const btnShareCampaignWhatsApp = document.getElementById('btnShareCampaignWhatsApp');
+    if (btnShareCampaignWhatsApp) {
+      btnShareCampaignWhatsApp.addEventListener('click', () => {
+        viralManager.shareWhatsApp('Grand UNESCO Restoration Masterpiece', 100);
+      });
+    }
 
     // Audio Mute toggle
     const btnMute = document.getElementById('btnMute');
@@ -248,6 +402,7 @@ class GroutApp {
     // Soundboard Modal
     const soundboardModal = document.getElementById('soundboardModal');
     document.getElementById('btnOpenSoundboard').addEventListener('click', () => {
+      audio.refreshVoiceAvailability();
       soundboardModal.classList.add('active');
     });
     document.getElementById('btnCloseSoundboard').addEventListener('click', () => {

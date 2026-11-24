@@ -1,12 +1,267 @@
-// 8 Viral Meme Levels + Endless ASMR Mode with Warm Artisanal Palettes for GROUT!
+// Five-Level Campaign + Endless ASMR Zen Mode for GROUT!
+// Implements distinct geometries (Subway, Hexagon, Moroccan Mosaic, Cafe Speed-Run, Roman Restoration)
 
+// -------------------------------------------------------------
+// HELPER: HEXAGONAL GEOMETRY GENERATOR (Level 2)
+// -------------------------------------------------------------
+function generateHexagonLevel(w, h) {
+  const radius = Math.min(w, h) * 0.14; // Hexagon circumradius
+  const innerR = radius * (Math.sqrt(3) / 2);
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // Hexagon centers arranged in a compact 3-row cluster
+  const hexCenters = [
+    { x: cx, y: cy - innerR * 2, id: 'H1' },
+    { x: cx - radius * 1.5, y: cy - innerR, id: 'H2' },
+    { x: cx + radius * 1.5, y: cy - innerR, id: 'H3' },
+    { x: cx, y: cy, id: 'H4' },
+    { x: cx - radius * 1.5, y: cy + innerR, id: 'H5' },
+    { x: cx + radius * 1.5, y: cy + innerR, id: 'H6' },
+    { x: cx, y: cy + innerR * 2, id: 'H7' }
+  ];
+
+  const tiles = [];
+  const segmentsMap = new Map();
+
+  hexCenters.forEach((center, idx) => {
+    const polygon = [];
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 180) * (60 * i);
+      const px = center.x + radius * 0.90 * Math.cos(angle);
+      const py = center.y + radius * 0.90 * Math.sin(angle);
+      polygon.push({ x: px, y: py });
+    }
+
+    tiles.push({
+      polygon,
+      color: '#E0F2FE', // Pastel sky blue
+      border: '#BAE6FD',
+      label: `Hex 4" (#${idx + 1})`
+    });
+
+    // Edges with full radius for joint gaps
+    for (let i = 0; i < 6; i++) {
+      const a1 = (Math.PI / 180) * (60 * i);
+      const a2 = (Math.PI / 180) * (60 * (i + 1));
+      const p1 = { x: Math.round(center.x + radius * Math.cos(a1)), y: Math.round(center.y + radius * Math.sin(a1)) };
+      const p2 = { x: Math.round(center.x + radius * Math.cos(a2)), y: Math.round(center.y + radius * Math.sin(a2)) };
+
+      // Canonical segment key
+      const key = (p1.x < p2.x || (p1.x === p2.x && p1.y < p2.y))
+        ? `${p1.x},${p1.y}-${p2.x},${p2.y}`
+        : `${p2.x},${p2.y}-${p1.x},${p1.y}`;
+
+      if (!segmentsMap.has(key)) {
+        segmentsMap.set(key, { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, width: 22 });
+      }
+    }
+  });
+
+  return { tiles, gaps: Array.from(segmentsMap.values()) };
+}
+
+// -------------------------------------------------------------
+// HELPER: MOROCCAN MOSAIC GEOMETRY GENERATOR (Level 3)
+// -------------------------------------------------------------
+function generateMoroccanLevel(w, h) {
+  const cx = w / 2;
+  const cy = h / 2;
+  const size = Math.min(w, h) * 0.36;
+  const half = size / 2;
+
+  const tiles = [];
+  const gaps = [];
+
+  // Central 8-pointed Moroccan Star (Section A: Requires White Grout)
+  const starRadius = size * 0.65;
+  const innerRadius = starRadius * 0.52;
+  const starPoly = [];
+  for (let i = 0; i < 16; i++) {
+    const r = (i % 2 === 0) ? starRadius : innerRadius;
+    const angle = (Math.PI / 8) * i;
+    starPoly.push({ x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) });
+  }
+
+  tiles.push({
+    type: 'star8',
+    polygon: starPoly,
+    color: '#1E3A8A', // Deep Cobalt Blue
+    border: '#172554',
+    label: 'Cobalt Star ✦'
+  });
+
+  // Gaps along Star perimeter (Requires White Grout)
+  for (let i = 0; i < starPoly.length; i++) {
+    const p1 = starPoly[i];
+    const p2 = starPoly[(i + 1) % starPoly.length];
+    gaps.push({
+      x1: p1.x,
+      y1: p1.y,
+      x2: p2.x,
+      y2: p2.y,
+      width: 20,
+      requiredColor: '#F5F2EB', // Chalk Limestone White
+      sectionId: 'star'
+    });
+  }
+
+  // Four Interlocking Terracotta Cross Wings (Section B: Requires Terracotta Grout)
+  const crossOffsets = [
+    { dx: 0, dy: -size * 0.72, label: 'North Cross ✚' },
+    { dx: size * 0.72, dy: 0, label: 'East Cross ✚' },
+    { dx: 0, dy: size * 0.72, label: 'South Cross ✚' },
+    { dx: -size * 0.72, dy: 0, label: 'West Cross ✚' }
+  ];
+
+  crossOffsets.forEach((off) => {
+    const ccx = cx + off.dx;
+    const ccy = cy + off.dy;
+    const cw = size * 0.44;
+    const ch = size * 0.44;
+    const arm = cw * 0.33;
+
+    // Greek cross polygon
+    const crossPoly = [
+      { x: ccx - arm / 2, y: ccy - ch / 2 },
+      { x: ccx + arm / 2, y: ccy - ch / 2 },
+      { x: ccx + arm / 2, y: ccy - arm / 2 },
+      { x: ccx + cw / 2, y: ccy - arm / 2 },
+      { x: ccx + cw / 2, y: ccy + arm / 2 },
+      { x: ccx + arm / 2, y: ccy + arm / 2 },
+      { x: ccx + arm / 2, y: ccy + ch / 2 },
+      { x: ccx - arm / 2, y: ccy + ch / 2 },
+      { x: ccx - arm / 2, y: ccy + arm / 2 },
+      { x: ccx - cw / 2, y: ccy + arm / 2 },
+      { x: ccx - cw / 2, y: ccy - arm / 2 },
+      { x: ccx - arm / 2, y: ccy - arm / 2 }
+    ];
+
+    tiles.push({
+      type: 'cross',
+      polygon: crossPoly,
+      color: '#C2410C', // Terracotta Orange
+      border: '#9A3412',
+      label: off.label
+    });
+
+    // Cross perimeter joints (Requires Terracotta Grout)
+    for (let i = 0; i < crossPoly.length; i++) {
+      const p1 = crossPoly[i];
+      const p2 = crossPoly[(i + 1) % crossPoly.length];
+      gaps.push({
+        x1: p1.x,
+        y1: p1.y,
+        x2: p2.x,
+        y2: p2.y,
+        width: 20,
+        requiredColor: '#9A3412', // Burnt Terracotta
+        sectionId: 'cross'
+      });
+    }
+  });
+
+  return { tiles, gaps };
+}
+
+// -------------------------------------------------------------
+// HELPER: ROMAN MOSAIC RESTORATION GENERATOR (Level 5 Boss)
+// -------------------------------------------------------------
+function generateRomanRestorationLevel(w, h) {
+  const cx = w / 2;
+  const cy = h / 2 - 25;
+  const mosaicW = Math.min(w * 0.82, 540);
+  const mosaicH = Math.min(h * 0.65, 330);
+
+  const tiles = [];
+  const gaps = [];
+
+  // Base background Roman stone border
+  const rows = 4;
+  const cols = 5;
+  const tw = mosaicW / cols;
+  const th = mosaicH / rows;
+  const originX = cx - mosaicW / 2;
+  const originY = cy - mosaicH / 2;
+
+  // 4 target sockets that are missing initially
+  const missingSlots = [
+    { row: 1, col: 1, id: 'slot_1', name: 'Imperial Eagle', color: '#D97706', shape: 'square' },
+    { row: 1, col: 3, id: 'slot_2', name: 'Laurel Tessera', color: '#4D7C0F', shape: 'diamond' },
+    { row: 2, col: 2, id: 'slot_3', name: 'Acanthus Relief', color: '#B45309', shape: 'square' },
+    { row: 2, col: 4, id: 'slot_4', name: 'Marble Keystone', color: '#F5F5F4', shape: 'diamond' }
+  ];
+
+  const sockets = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const tx = originX + c * tw;
+      const ty = originY + r * th;
+      const missing = missingSlots.find(s => s.row === r && s.col === c);
+
+      if (missing) {
+        // Socket target for puzzle
+        sockets.push({
+          id: missing.id,
+          name: missing.name,
+          color: missing.color,
+          x: tx + 4,
+          y: ty + 4,
+          w: tw - 8,
+          h: th - 8,
+          placed: false
+        });
+      } else {
+        // Regular ancient stone tile
+        tiles.push({
+          x: tx + 3,
+          y: ty + 3,
+          w: tw - 6,
+          h: th - 6,
+          color: (r + c) % 2 === 0 ? '#78716C' : '#A8A29E',
+          border: '#57534E',
+          label: `Tessera ${r},${c}`
+        });
+      }
+    }
+  }
+
+  // Grid mortar joints between all cells
+  for (let r = 1; r < rows; r++) {
+    gaps.push({ x1: originX, y1: originY + r * th, x2: originX + mosaicW, y2: originY + r * th, width: 22 });
+  }
+  for (let c = 1; c < cols; c++) {
+    gaps.push({ x1: originX + c * tw, y1: originY, x2: originX + c * tw, y2: originY + mosaicH, width: 22 });
+  }
+
+  // 4 Loose pieces resting in the lower tray
+  const trayY = h - 55;
+  const loosePieces = sockets.map((sock, i) => ({
+    id: sock.id,
+    name: sock.name,
+    color: sock.color,
+    targetX: sock.x,
+    targetY: sock.y,
+    w: sock.w,
+    h: sock.h,
+    x: w * 0.15 + i * (w * 0.22),
+    y: trayY,
+    placed: false
+  }));
+
+  return { tiles, gaps, sockets, loosePieces };
+}
+
+// -------------------------------------------------------------
+// HELPER: PROCEDURAL ENDLESS ASMR WAVE GENERATOR (Bonus Zen Mode)
+// -------------------------------------------------------------
 export function generateEndlessGaps(w, h, wave = 1) {
   const patternType = (((wave || 1) - 1) % 5) + 1;
   const gaps = [];
 
   switch (patternType) {
     case 1: {
-      // Wave 1: Classical Running Bond Subway Brick
       const rows = 4;
       const cols = 4;
       const rowH = h / rows;
@@ -18,53 +273,35 @@ export function generateEndlessGaps(w, h, wave = 1) {
         const offset = (r % 2 === 0) ? 0 : colW / 2;
         for (let c = 1; c < cols; c++) {
           const x = c * colW + offset;
-          if (x < w) {
-            gaps.push({ x1: x, y1: r * rowH, x2: x, y2: (r + 1) * rowH, width: 22 });
-          }
+          if (x < w) gaps.push({ x1: x, y1: r * rowH, x2: x, y2: (r + 1) * rowH, width: 22 });
         }
       }
       break;
     }
-
     case 2: {
-      // Wave 2: 45° Diamond Lattice Grid
       const cx = w / 2;
       const cy = h / 2;
       const span = Math.min(w, h) * 0.40;
-      // Diamond outer rhombus
       gaps.push({ x1: cx, y1: cy - span, x2: cx + span, y2: cy, width: 26 });
       gaps.push({ x1: cx + span, y1: cy, x2: cx, y2: cy + span, width: 26 });
       gaps.push({ x1: cx, y1: cy + span, x2: cx - span, y2: cy, width: 26 });
       gaps.push({ x1: cx - span, y1: cy, x2: cx, y2: cy - span, width: 26 });
-      // Inner cross
       gaps.push({ x1: cx, y1: cy - span, x2: cx, y2: cy + span, width: 24 });
       gaps.push({ x1: cx - span, y1: cy, x2: cx + span, y2: cy, width: 24 });
-      // Outer border spokes
-      gaps.push({ x1: w * 0.08, y1: cy - span, x2: cx, y2: cy - span, width: 20 });
-      gaps.push({ x1: cx, y1: cy - span, x2: w * 0.92, y2: cy - span, width: 20 });
-      gaps.push({ x1: w * 0.08, y1: cy + span, x2: cx, y2: cy + span, width: 20 });
-      gaps.push({ x1: cx, y1: cy + span, x2: w * 0.92, y2: cy + span, width: 20 });
       break;
     }
-
     case 3: {
-      // Wave 3: Artisanal Fractured Flagstone / Mosaic
       const cx = w / 2;
       const cy = h / 2;
       gaps.push({ x1: cx - 40, y1: cy - 30, x2: cx + 50, y2: cy - 20, width: 26 });
       gaps.push({ x1: cx + 50, y1: cy - 20, x2: cx + 20, y2: cy + 45, width: 28 });
       gaps.push({ x1: cx + 20, y1: cy + 45, x2: cx - 45, y2: cy + 30, width: 24 });
       gaps.push({ x1: cx - 45, y1: cy + 30, x2: cx - 40, y2: cy - 30, width: 26 });
-      // Organic spokes to boundary
       gaps.push({ x1: cx - 40, y1: cy - 30, x2: w * 0.12, y2: h * 0.15, width: 22 });
       gaps.push({ x1: cx + 50, y1: cy - 20, x2: w * 0.88, y2: h * 0.18, width: 24 });
-      gaps.push({ x1: cx + 20, y1: cy + 45, x2: w * 0.82, y2: h * 0.85, width: 22 });
-      gaps.push({ x1: cx - 45, y1: cy + 30, x2: w * 0.15, y2: h * 0.82, width: 24 });
       break;
     }
-
     case 4: {
-      // Wave 4: Artisanal Herringbone Zigzag
       const rows = 3;
       const rowH = h / (rows + 1);
       for (let r = 1; r <= rows; r++) {
@@ -73,13 +310,9 @@ export function generateEndlessGaps(w, h, wave = 1) {
         gaps.push({ x1: w * 0.35, y1: y + 22, x2: w * 0.65, y2: y - 18, width: 24 });
         gaps.push({ x1: w * 0.65, y1: y - 18, x2: w * 0.90, y2: y + 22, width: 24 });
       }
-      gaps.push({ x1: w * 0.35, y1: h * 0.12, x2: w * 0.35, y2: h * 0.88, width: 20 });
-      gaps.push({ x1: w * 0.65, y1: h * 0.12, x2: w * 0.65, y2: h * 0.88, width: 20 });
       break;
     }
-
     case 5: {
-      // Wave 5: Modular Versailles French Palace Stone
       const cx = w / 2;
       const cy = h / 2;
       const cw = w * 0.36;
@@ -88,11 +321,6 @@ export function generateEndlessGaps(w, h, wave = 1) {
       gaps.push({ x1: cx + cw / 2, y1: cy - ch / 2, x2: cx + cw / 2, y2: cy + ch / 2, width: 28 });
       gaps.push({ x1: cx + cw / 2, y1: cy + ch / 2, x2: cx - cw / 2, y2: cy + ch / 2, width: 28 });
       gaps.push({ x1: cx - cw / 2, y1: cy + ch / 2, x2: cx - cw / 2, y2: cy - ch / 2, width: 28 });
-      // Surrounding peripheral border joints
-      gaps.push({ x1: w * 0.10, y1: cy - ch / 2, x2: cx - cw / 2, y2: cy - ch / 2, width: 22 });
-      gaps.push({ x1: cx + cw / 2, y1: cy - ch / 2, x2: w * 0.90, y2: cy - ch / 2, width: 22 });
-      gaps.push({ x1: w * 0.10, y1: cy + ch / 2, x2: cx - cw / 2, y2: cy + ch / 2, width: 22 });
-      gaps.push({ x1: cx + cw / 2, y1: cy + ch / 2, x2: w * 0.90, y2: cy + ch / 2, width: 22 });
       break;
     }
   }
@@ -114,13 +342,7 @@ export function generateEndlessTiles(w, h, wave = 1) {
       const colW = w / cols;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          tiles.push({
-            x: c * colW + 4,
-            y: r * rowH + 4,
-            w: colW - 8,
-            h: rowH - 8,
-            label: `Subway W${wave}`
-          });
+          tiles.push({ x: c * colW + 4, y: r * rowH + 4, w: colW - 8, h: rowH - 8, label: `Subway W${wave}` });
         }
       }
       break;
@@ -148,270 +370,203 @@ export function generateEndlessTiles(w, h, wave = 1) {
   return tiles;
 }
 
+// -------------------------------------------------------------
+// THE FIVE-LEVEL CAMPAIGN DEFINITIONS
+// -------------------------------------------------------------
+
 export const LEVELS = [
+  // LEVEL 1: THE CLASSIC SUBWAY BACKSPLASH (Tutorial)
   {
     id: 1,
-    name: "The Ventilation Gap",
-    hindiName: "बाथरूम का 2-इंच वेंटिलेशन",
-    memeRef: "Confidence level: Mistri saying 'Isme grout bhar denge' on a 2-inch wide gap",
-    thekedarQuote: "“Bhai ye tiles ke beech me 2 inch ka gap kyu choda hai?! Paani andar ghusega!”",
-    mistriQuote: "“Saab wo bathroom me ventilation ke liye choda tha... par koi na, ISME GROUT BHAR DENGE! 🧱”",
-    badge: "Level 1: Rookie Mistri",
-    tileColor: "#FAF8F5",
-    tileBorder: "#E5E0D8",
-    gapWidth: 26,
-    targetFill: 84,
-    groutColor: "#B45309", // Warm Raw Ochre
-    groutBorder: "#92400E",
-    generateGaps: (w, h) => {
-      const cx = w / 2;
-      const cy = h / 2;
-      return [
-        { x1: w * 0.1, y1: cy, x2: w * 0.9, y2: cy, width: 28 },
-        { x1: cx - 18, y1: h * 0.1, x2: cx + 18, y2: h * 0.9, width: 28 },
-        { x1: w * 0.1, y1: h * 0.28, x2: cx - 18, y2: h * 0.35, width: 20 },
-        { x1: cx + 18, y1: h * 0.65, x2: w * 0.9, y2: h * 0.72, width: 20 },
-      ];
-    },
-    tiles: (w, h) => [
-      { x: w * 0.1, y: h * 0.1, w: w * 0.37, h: h * 0.37, label: "Porcelain 30x30" },
-      { x: w * 0.53, y: h * 0.1, w: w * 0.37, h: h * 0.37, label: "Porcelain 30x30" },
-      { x: w * 0.1, y: h * 0.53, w: w * 0.37, h: h * 0.37, label: "Porcelain 30x30" },
-      { x: w * 0.53, y: h * 0.53, w: w * 0.37, h: h * 0.37, label: "Porcelain 30x30" },
-    ]
-  },
-  {
-    id: 2,
-    name: "The Viral Staircase (Original Meme)",
-    hindiName: "असली वायरल सीढ़ियाँ",
-    memeRef: "The exact viral video that started the whole internet trend",
-    thekedarQuote: "“Ye stairs dekho! Ek step 6 inch ka, agla 14 inch ka! Customer gir ke ICU jayega!”",
-    mistriQuote: "“Ye Italian zigzag architecture hai saab! Thoda plaster, baaki ISME GROUT BHAR DENGE! 😎”",
-    badge: "Level 2: Senior Jugaad Mistri",
-    tileColor: "#F5F2EB",
-    tileBorder: "#D6CEBF",
-    gapWidth: 30,
-    targetFill: 84,
-    groutColor: "#9A3412", // Natural Burnt Terracotta
-    groutBorder: "#7C2D12",
-    generateGaps: (w, h) => {
-      const gaps = [];
-      const steps = 3;
-      for (let i = 1; i <= steps; i++) {
-        const y = (h / (steps + 1)) * i;
-        gaps.push({ x1: w * 0.08, y1: y - 12, x2: w * 0.48, y2: y + 16, width: 32 });
-        gaps.push({ x1: w * 0.48, y1: y + 16, x2: w * 0.92, y2: y - 8, width: 30 });
-      }
-      gaps.push({ x1: w * 0.32, y1: h * 0.12, x2: w * 0.30, y2: h * 0.88, width: 22 });
-      gaps.push({ x1: w * 0.68, y1: h * 0.15, x2: w * 0.65, y2: h * 0.88, width: 22 });
-      return gaps;
-    },
-    tiles: (w, h) => [
-      { x: w * 0.08, y: h * 0.12, w: w * 0.36, h: h * 0.20, label: "Step 1 (6 inch)" },
-      { x: w * 0.50, y: h * 0.15, w: w * 0.42, h: h * 0.18, label: "Step 1 (Crooked)" },
-      { x: w * 0.08, y: h * 0.38, w: w * 0.56, h: h * 0.20, label: "Step 2 (14 inch!)" },
-      { x: w * 0.70, y: h * 0.40, w: w * 0.22, h: h * 0.18, label: "Cut Piece" },
-      { x: w * 0.08, y: h * 0.64, w: w * 0.84, h: h * 0.22, label: "Step 3 (Danger)" },
-    ]
-  },
-  {
-    id: 3,
-    name: "Heartbreak & Dhokha (Dil Me Grout)",
-    hindiName: "टूटा हुआ दिल और धोखा",
-    memeRef: "Bhai usne block kar diya... koi na dil me grout bhar do!",
-    thekedarQuote: "“Usne 4 saal baad WhatsApp pe block kar diya! Dil ke tukde-tukde ho gaye! Ab kya karega?!”",
-    mistriQuote: "“Are dil hi to toota hai bhai! 2 packet White Grout lagao, Fevicol se majboot jod denge! 💔➡️💖”",
-    badge: "Level 3: Cardiac Surgeon Mistri",
-    tileColor: "#9F1239",
-    tileBorder: "#881337",
-    gapWidth: 28,
-    targetFill: 84,
-    groutColor: "#F5F2EB", // Warm Chalk Limestone White
-    groutBorder: "#D6CEBF",
-    isHeartShape: true,
-    generateGaps: (w, h) => {
-      const cx = w / 2;
-      const cy = h / 2;
-      return [
-        { x1: cx, y1: cy - h * 0.28, x2: cx - 28, y2: cy - h * 0.10, width: 28 },
-        { x1: cx - 28, y1: cy - h * 0.10, x2: cx + 32, y2: cy + 12, width: 30 },
-        { x1: cx + 32, y1: cy + 12, x2: cx - 18, y2: cy + h * 0.18, width: 26 },
-        { x1: cx - 18, y1: cy + h * 0.18, x2: cx, y2: cy + h * 0.32, width: 24 },
-        { x1: cx - 28, y1: cy - h * 0.10, x2: cx - w * 0.25, y2: cy - h * 0.04, width: 18 },
-        { x1: cx + 32, y1: cy + 12, x2: cx + w * 0.25, y2: cy + 28, width: 18 },
-      ];
-    },
-    tiles: (w, h) => []
-  },
-  {
-    id: 4,
-    name: "Corporate Deadline Crisis (Excel Grout)",
-    hindiName: "कॉरपोरेट एक्सेल शीट का कांड",
-    memeRef: "Missed the client deadline? Excel sheet ke gaps me grout bhar denge!",
-    thekedarQuote: "“Client ki deadline miss ho gayi! Code production me phat gaya! Manager fired karne wala hai!”",
-    mistriQuote: "“Tension mat lo sir! Git merge conflicts aur Excel ke blank cells me GROUT BHAR DENGE! 📊”",
-    badge: "Level 4: Corporate Jugaad Lead",
-    tileColor: "#FAF8F5",
+    name: "The Classic Subway Backsplash",
+    hindiName: "क्लासिक सबवे किचन टाइल्स (ट्यूटोरियल)",
+    memeRef: "Confidence level: 'Tension mat lo, isme grout bhar denge!'",
+    thekedarQuote: "“New kitchen backsplash installation! Make sure every empty joint is filled before wiping.”",
+    mistriQuote: "“Step 1: Use Trowel to fill empty joints. Step 2: Use Sponge to wipe excess surface haze! 🧱”",
+    badge: "Level 1: Backsplash Apprentice",
+    tileColor: "#FAF8F5", // Clean porcelain white glaze
     tileBorder: "#E5E0D8",
     gapWidth: 24,
     targetFill: 84,
-    groutColor: "#2D6A4F", // Natural Olive Forest Sage
-    groutBorder: "#1B4332",
+    groutColor: "#B45309", // Warm Raw Ochre
+    groutBorder: "#92400E",
+    isTutorial: true,
     generateGaps: (w, h) => {
       const rows = 4;
-      const cols = 3;
+      const cols = 4;
       const gaps = [];
       const rowH = h / rows;
       const colW = w / cols;
       for (let r = 1; r < rows; r++) {
-        gaps.push({ x1: w * 0.1, y1: r * rowH, x2: w * 0.9, y2: r * rowH, width: 24 });
+        gaps.push({ x1: w * 0.05, y1: r * rowH, x2: w * 0.95, y2: r * rowH, width: 24 });
       }
-      for (let c = 1; c < cols; c++) {
-        gaps.push({ x1: c * colW, y1: h * 0.12, x2: c * colW, y2: h * 0.88, width: 24 });
+      for (let r = 0; r < rows; r++) {
+        const offset = (r % 2 === 0) ? 0 : colW / 2;
+        for (let c = 1; c < cols; c++) {
+          const x = c * colW + offset;
+          if (x < w * 0.95) {
+            gaps.push({ x1: x, y1: r * rowH + 6, x2: x, y2: (r + 1) * rowH - 6, width: 22 });
+          }
+        }
       }
       return gaps;
     },
-    tiles: (w, h) => [
-      { x: w * 0.1, y: h * 0.12, w: w * 0.26, h: h * 0.18, label: "Q1 Rev: NULL" },
-      { x: w * 0.37, y: h * 0.12, w: w * 0.26, h: h * 0.18, label: "Bug #404: FATAL" },
-      { x: w * 0.64, y: h * 0.12, w: w * 0.26, h: h * 0.18, label: "Status: PANIC" },
-      { x: w * 0.1, y: h * 0.37, w: w * 0.53, h: h * 0.18, label: "Deadline: Overdue" },
-      { x: w * 0.64, y: h * 0.37, w: w * 0.26, h: h * 0.18, label: "#DIV/0!" },
-      { x: w * 0.1, y: h * 0.62, w: w * 0.80, h: h * 0.26, label: "RESOLUTION: MISTRI GROUT" }
-    ]
+    tiles: (w, h) => {
+      const rows = 4;
+      const cols = 4;
+      const tiles = [];
+      const rowH = h / rows;
+      const colW = w / cols;
+      for (let r = 0; r < rows; r++) {
+        const offset = (r % 2 === 0) ? 0 : colW / 2;
+        for (let c = 0; c <= cols; c++) {
+          const x = c * colW + offset;
+          if (x < w * 0.95) {
+            tiles.push({
+              x: x + 4,
+              y: r * rowH + 4,
+              w: Math.min(colW - 8, w * 0.95 - x - 4),
+              h: rowH - 8,
+              label: 'Glazed 3x6'
+            });
+          }
+        }
+      }
+      return tiles;
+    }
   },
+
+  // LEVEL 2: THE HEXAGON BATHROOM FLOOR (Blowout Mechanic)
+  {
+    id: 2,
+    name: "The Hexagon Bathroom Floor",
+    hindiName: "हेक्सागोन बाथरूम फ़्लोर (3-वे जोड़)",
+    memeRef: "Thekedar: 3-way hexagon joints me haath kaanp jayega! Mistri: Grout bhar denge!",
+    thekedarQuote: "“Look at these 120-degree three-way intersections! Aggressive scrubbing will blow out the joints!”",
+    mistriQuote: "“Careful with the trowel! Violent scrubbing causes a blowout (-10% penalty). Grout smoothly! 😎”",
+    badge: "Level 2: Geometric Craftsman",
+    tileColor: "#E0F2FE", // Soft pastel sky blue
+    tileBorder: "#BAE6FD",
+    gapWidth: 22,
+    targetFill: 85,
+    groutColor: "#9A3412", // Burnt Terracotta
+    groutBorder: "#7C2D12",
+    hasBlowoutMechanic: true,
+    generateGaps: (w, h) => generateHexagonLevel(w, h).gaps,
+    tiles: (w, h) => generateHexagonLevel(w, h).tiles
+  },
+
+  // LEVEL 3: THE MOROCCAN MOSAIC (Grout Color Selection)
+  {
+    id: 3,
+    name: "The Moroccan Mosaic",
+    hindiName: "मोरक्कन स्टार मोज़ेक (रंग मिलान)",
+    memeRef: "Rang galat mat lagao, Moroccan carpet jaisa design hai!",
+    thekedarQuote: "“This Moroccan pattern has two distinct zones! Cobalt Star sections need White Grout, Terracotta sections need Burnt Mortar!”",
+    mistriQuote: "“Select the correct grout color before applying! One wrong-color stroke ruins the harmony! 🎨”",
+    badge: "Level 3: Master Colorist",
+    tileColor: "#1E3A8A", // Deep Cobalt Blue
+    tileBorder: "#172554",
+    gapWidth: 20,
+    targetFill: 85,
+    groutColor: "#F5F2EB", // Default White
+    groutBorder: "#D6CEBF",
+    hasColorMatching: true,
+    colorSections: [
+      { id: 'star', name: 'Cobalt Star Joints', requiredColor: '#F5F2EB', label: 'Chalk Limestone White' },
+      { id: 'cross', name: 'Terracotta Cross Joints', requiredColor: '#9A3412', label: 'Burnt Terracotta' }
+    ],
+    generateGaps: (w, h) => generateMoroccanLevel(w, h).gaps,
+    tiles: (w, h) => generateMoroccanLevel(w, h).tiles
+  },
+
+  // LEVEL 4: THE SPEED-RUN CAFÉ COUNTER (Curing Timer + Deadline)
+  {
+    id: 4,
+    name: "The Speed-Run Café Counter",
+    hindiName: "कैफ़े काउंटर स्पीड-रन (30s क्योरिंग)",
+    memeRef: "Jaldi kar bhai! Grout 30 second me cement ban jayega!",
+    thekedarQuote: "“The coffee shop opens in 75 seconds! And remember: quick-set grout begins curing after 30 seconds!”",
+    mistriQuote: "“Cured haze turns rock-hard and takes 3x sponge passes to buff! Balance filling and cleaning fast! ⏱️☕”",
+    badge: "Level 4: Rapid Response Mistri",
+    tileColor: "#065F46", // Glossy Emerald Green
+    tileBorder: "#047857",
+    gapWidth: 22,
+    targetFill: 85,
+    groutColor: "#F5F2EB", // White Mortar
+    groutBorder: "#D6CEBF",
+    hasCuringTimer: true,
+    curingDelaySec: 30,
+    overallDeadlineSec: 75,
+    generateGaps: (w, h) => {
+      const rows = 4;
+      const cols = 5;
+      const gaps = [];
+      const rowH = h / rows;
+      const colW = w / cols;
+      for (let r = 1; r < rows; r++) {
+        gaps.push({ x1: w * 0.08, y1: r * rowH, x2: w * 0.92, y2: r * rowH, width: 22 });
+      }
+      for (let c = 1; c < cols; c++) {
+        gaps.push({ x1: c * colW, y1: h * 0.08, x2: c * colW, y2: h * 0.92, width: 22 });
+      }
+      return gaps;
+    },
+    tiles: (w, h) => {
+      const rows = 4;
+      const cols = 5;
+      const tiles = [];
+      const rowH = h / rows;
+      const colW = w / cols;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          tiles.push({
+            x: c * colW + 4,
+            y: r * rowH + 4,
+            w: colW - 8,
+            h: rowH - 8,
+            color: '#065F46',
+            border: '#047857',
+            label: 'Emerald Glaze'
+          });
+        }
+      }
+      return tiles;
+    }
+  },
+
+  // LEVEL 5: MASTERPIECE RESTORATION (Boss Level - Two Stages)
   {
     id: 5,
-    name: "The Flunked Exam Marksheet (F to A+)",
-    hindiName: "फेल मार्कशीट से A+ टॉपर",
-    memeRef: "Physics me 00/100... marksheet me grout bhar ke pass ho jao!",
-    thekedarQuote: "“Physics me ZERO! Maths me ZERO! Papa belan aur mummy jhadu leke gate pe khade hain!”",
-    mistriQuote: "“F grade ke beech me ek danda lagao, baki ISME GROUT BHAR KE A+ BANA DENGE! 💯”",
-    badge: "Level 5: Academic Hacker Mistri",
-    tileColor: "#FEF9C3",
-    tileBorder: "#FDE047",
-    gapWidth: 26,
-    targetFill: 84,
-    groutColor: "#15803D", // Academic Green
-    groutBorder: "#166534",
-    generateGaps: (w, h) => {
-      const cx = w / 2;
-      const cy = h / 2;
-      return [
-        { x1: cx - 65, y1: cy - 95, x2: cx - 65, y2: cy + 95, width: 30 },
-        { x1: cx - 65, y1: cy - 95, x2: cx + 25, y2: cy - 95, width: 28 },
-        { x1: cx - 65, y1: cy, x2: cx + 5, y2: cy, width: 26 },
-        { x1: cx + 25, y1: cy - 95, x2: cx + 25, y2: cy + 95, width: 28 },
-        { x1: cx + 65, y1: cy - 25, x2: cx + 115, y2: cy - 25, width: 22 },
-        { x1: cx + 90, y1: cy - 50, x2: cx + 90, y2: cy, width: 22 },
-      ];
-    },
-    tiles: (w, h) => [
-      { x: w * 0.1, y: h * 0.1, w: w * 0.8, h: h * 0.8, label: "BOARD MARKSHEET: 00/100 ❌" }
-    ]
+    name: "Masterpiece Restoration",
+    hindiName: "प्राचीन रोमन मोज़ेक बहाली (बॉस लेवल)",
+    memeRef: "UNESCO Calling Babu Mistri: 2000 saal purani floor bacha li!",
+    thekedarQuote: "“Ancient 2nd-century Roman mosaic floor! Fragile artifacts must be placed into their exact vacant sockets before grouting!”",
+    mistriQuote: "“Stage 1: Drag the 4 loose mosaic pieces into their sockets. Watch the FRAGILITY meter! Stage 2: Seal with Roman mortar! 🏛️”",
+    badge: "Level 5: UNESCO Chief Conservator",
+    tileColor: "#78716C", // Weathered ancient stone
+    tileBorder: "#57534E",
+    gapWidth: 22,
+    targetFill: 85,
+    groutColor: "#B45309", // Roman Pozzolanic Mortar
+    groutBorder: "#78350F",
+    isBossLevel: true,
+    hasRestorationPuzzle: true,
+    maxFragility: 100,
+    generateGaps: (w, h) => generateRomanRestorationLevel(w, h).gaps,
+    tiles: (w, h) => generateRomanRestorationLevel(w, h).tiles,
+    getRestorationData: (w, h) => generateRomanRestorationLevel(w, h)
   },
+
+  // BONUS MODE: ENDLESS MISTRI ASMR (Zen Meditation)
   {
     id: 6,
-    name: "Shattered Phone Screen (Spiderweb)",
-    hindiName: "टूटा हुआ आईफ़ोन स्क्रीन",
-    memeRef: "Apple store maang raha 40,000... 50 rupaye ka grout bhar do!",
-    thekedarQuote: "“Naya phone haath se gir gaya! Display me 25 dararein aa gayi! Screen replacement 40,000 ka hai!”",
-    mistriQuote: "“Apple store mat jao saab! 50 rupaye ka paste lo, ISME WARM GROUT BHAR DENGE! 📱”",
-    badge: "Level 6: Silicon Valley Jugaad",
-    tileColor: "#292524",
-    tileBorder: "#44403C",
-    gapWidth: 20,
-    targetFill: 84,
-    groutColor: "#D97706", // Amber Sandstone
-    groutBorder: "#B45309",
-    generateGaps: (w, h) => {
-      const cx = w / 2;
-      const cy = h / 2;
-      const cracks = [];
-      const angles = [0, 45, 90, 135, 180, 225, 270, 315];
-      angles.forEach((deg, idx) => {
-        const rad = (deg * Math.PI) / 180;
-        const len = (idx % 2 === 0) ? Math.min(w, h) * 0.38 : Math.min(w, h) * 0.28;
-        cracks.push({
-          x1: cx,
-          y1: cy,
-          x2: cx + Math.cos(rad) * len,
-          y2: cy + Math.sin(rad) * len,
-          width: 18
-        });
-      });
-      cracks.push({ x1: cx - 65, y1: cy - 55, x2: cx + 65, y2: cy - 55, width: 14 });
-      cracks.push({ x1: cx + 65, y1: cy - 55, x2: cx + 65, y2: cy + 55, width: 14 });
-      cracks.push({ x1: cx + 65, y1: cy + 55, x2: cx - 65, y2: cy + 55, width: 14 });
-      cracks.push({ x1: cx - 65, y1: cy + 55, x2: cx - 65, y2: cy - 55, width: 14 });
-      return cracks;
-    },
-    tiles: (w, h) => [
-      { x: w * 0.18, y: h * 0.08, w: w * 0.64, h: h * 0.84, label: "AMOLED Gorilla Glass" }
-    ]
-  },
-  {
-    id: 7,
-    name: "The Sinking Titanic (Hull Fracture)",
-    hindiName: "टाइटैनिक का छेद",
-    memeRef: "Captain: Ship is sinking! Mistri: Iceberg ke hole me grout bhar denge!",
-    thekedarQuote: "“Captain! Iceberg ne ship ke side me 50-foot ka hole kar diya! Titanic dub raha hai!”",
-    mistriQuote: "“Arey tension kyu le rahe ho Captain saab! Jaldi 5 bori cement lao, ISME GROUT BHAR DENGE! 🚢”",
-    badge: "Level 7: Maritime Rescue Mistri",
-    tileColor: "#1E293B",
-    tileBorder: "#334155",
-    gapWidth: 30,
-    targetFill: 84,
-    groutColor: "#0D9488", // Ocean Teal Mortar
-    groutBorder: "#0F766E",
-    generateGaps: (w, h) => {
-      return [
-        { x1: w * 0.12, y1: h * 0.50, x2: w * 0.88, y2: h * 0.50, width: 34 },
-        { x1: w * 0.25, y1: h * 0.25, x2: w * 0.40, y2: h * 0.75, width: 26 },
-        { x1: w * 0.60, y1: h * 0.30, x2: w * 0.75, y2: h * 0.70, width: 26 },
-        { x1: w * 0.45, y1: h * 0.40, x2: w * 0.55, y2: h * 0.85, width: 22 }
-      ];
-    },
-    tiles: (w, h) => [
-      { x: w * 0.12, y: h * 0.20, w: w * 0.76, h: h * 0.60, label: "RMS TITANIC STEEL HULL" }
-    ]
-  },
-  {
-    id: 8,
-    name: "The Leaning Tower of Pisa (World Wonder)",
-    hindiName: "पीसा की झुकी मीनार (अंतिम परीक्षा)",
-    memeRef: "UNESCO calling Babu Mistri to fix 800-year-old leaning tower with Grout",
-    thekedarQuote: "“UNESCO ki 800 saal purani building 5.5 degree jhuk gayi hai! Duniya ke sabse bade engineers fail ho gaye!”",
-    mistriQuote: "“Engineers ne dimag nahi lagaya! Bas foundation ke niche 20 bori GROUT BHAR DENGE! 🏛️”",
-    badge: "Level 8: UNESCO Chief Mistri",
-    tileColor: "#FEF08A",
-    tileBorder: "#CA8A04",
-    gapWidth: 32,
-    targetFill: 84,
-    groutColor: "#9A3412", // Terracotta
-    groutBorder: "#7C2D12",
-    generateGaps: (w, h) => {
-      const cx = w / 2;
-      return [
-        { x1: w * 0.12, y1: h * 0.78, x2: w * 0.88, y2: h * 0.66, width: 40 },
-        { x1: cx - 55, y1: h * 0.18, x2: cx - 22, y2: h * 0.72, width: 28 },
-        { x1: cx + 45, y1: h * 0.18, x2: cx + 75, y2: h * 0.70, width: 28 },
-        { x1: cx - 85, y1: h * 0.36, x2: cx + 105, y2: h * 0.34, width: 24 },
-        { x1: cx - 75, y1: h * 0.54, x2: cx + 95, y2: h * 0.52, width: 24 },
-      ];
-    },
-    tiles: (w, h) => [
-      { x: w * 0.24, y: h * 0.15, w: w * 0.52, h: h * 0.55, label: "Torre di Pisa (1372 AD)" }
-    ]
-  },
-  {
-    id: 9,
-    name: "Infinite Mistri ASMR (Zen Meditation)",
-    hindiName: "अनंत मिस्त्री समाधि (ASMR)",
+    name: "Endless Mistri ASMR (Zen Meditation)",
+    hindiName: "अनंत मिस्त्री समाधि (असीमित ASMR)",
     memeRef: "Sukoon hi sukoon! Unlimited satisfying tile grouting relaxation",
-    thekedarQuote: "“Saab itni shanti kyu hai site pe? Kaam ho raha hai ya so gaye sab?”",
-    mistriQuote: "“Shanti se ASMR grouting enjoy karo bhai... Sukoon hi sukoon! ✨”",
-    badge: "Endless: Zen Grout Master",
+    thekedarQuote: "“Site is completely calm. Relax and enjoy limitless satisfying tile grouting without deadlines or penalties.”",
+    mistriQuote: "“Pure ASMR meditation mode. Infinite procedural waves with calming chimes. Sukoon hi sukoon! ✨”",
+    badge: "Bonus: Zen Grout Master",
     tileColor: "#FAF8F5",
     tileBorder: "#E5E0D8",
     gapWidth: 24,

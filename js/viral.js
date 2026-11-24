@@ -1,6 +1,6 @@
 // Viral loop sharing, authentic Indian meme soundboard & social engagement for GROUT!
 
-import { audio, MEME_CLIPS } from './audio.js';
+import { audio, VOICE_ASSET_MANIFEST, MEME_CLIPS } from './audio.js';
 
 export class ViralManager {
   constructor() {
@@ -8,7 +8,7 @@ export class ViralManager {
     this.activePlayingId = null;
   }
 
-  getShareText(levelName = "The Viral Staircase", score = 100) {
+  getShareText(levelName = "The Moroccan Mosaic", score = 100) {
     return `🧱 Bhai meri saari problems solve ho gayi! 😂\nMaine GROUT game me "${levelName}" clear karke certified Mistri degree le li!\nTile crooked? Heart broken? Flunked exam? ➡️ "ISME GROUT BHAR DENGE!"\n\nKhel ke dekh aur degree download kar 👇\n${this.gameUrl}`;
   }
 
@@ -58,18 +58,37 @@ export class ViralManager {
     }
   }
 
+  updateSoundboardPills() {
+    if (typeof document === 'undefined') return;
+    const soundboardBtns = document.querySelectorAll('[data-sound]');
+    soundboardBtns.forEach(btn => {
+      const soundKey = btn.getAttribute('data-sound');
+      const item = VOICE_ASSET_MANIFEST[soundKey];
+      const statusPill = btn.querySelector('.chip-status-pill');
+      if (statusPill && item) {
+        if (item.installed) {
+          statusPill.className = 'chip-status-pill installed';
+          statusPill.textContent = 'INSTALLED';
+        } else {
+          statusPill.className = 'chip-status-pill awaiting';
+          statusPill.textContent = 'AWAITING FILE (Drop in public/audio/voices/)';
+        }
+      }
+    });
+  }
+
   initSoundboard() {
     if (typeof document === 'undefined') return;
 
     const soundboardBtns = document.querySelectorAll('[data-sound]');
 
-    // Connect audio player state changes to visual UI feedback
-    audio.onMemeStateChange = (clipId, isPlaying) => {
+    const onStateUpdate = (clipId, isPlaying) => {
       this.activePlayingId = isPlaying ? clipId : null;
       soundboardBtns.forEach(btn => {
         const soundKey = btn.getAttribute('data-sound');
         const playIcon = btn.querySelector('.chip-play-icon');
         const statusPill = btn.querySelector('.chip-status-pill');
+        const item = VOICE_ASSET_MANIFEST[soundKey];
 
         if (soundKey === clipId && isPlaying) {
           btn.classList.add('is-playing');
@@ -78,13 +97,21 @@ export class ViralManager {
         } else {
           btn.classList.remove('is-playing');
           if (playIcon) playIcon.textContent = '▶';
-          if (statusPill) {
-            const clip = MEME_CLIPS[soundKey];
-            statusPill.textContent = clip && clip.bundled ? 'VERIFIED' : 'SLOT READY';
+          if (statusPill && item) {
+            if (item.installed) {
+              statusPill.className = 'chip-status-pill installed';
+              statusPill.textContent = 'INSTALLED';
+            } else {
+              statusPill.className = 'chip-status-pill awaiting';
+              statusPill.textContent = 'AWAITING FILE (Drop in public/audio/voices/)';
+            }
           }
         }
       });
     };
+
+    audio.onVoiceStateChange = onStateUpdate;
+    audio.onMemeStateChange = onStateUpdate;
 
     soundboardBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -93,11 +120,10 @@ export class ViralManager {
 
         // Toggle behavior: if already playing this clip, stop it
         if (this.activePlayingId === soundKey) {
-          audio.stopCurrentMemeAudio();
+          audio.stopCurrentVoice();
           return;
         }
 
-        const clip = MEME_CLIPS[soundKey];
         audio.triggerMemeSound(soundKey);
 
         // Visual bounce animation
@@ -110,11 +136,14 @@ export class ViralManager {
     const btnClose = document.getElementById('btnCloseSoundboard');
     if (btnClose) {
       btnClose.addEventListener('click', () => {
-        audio.stopCurrentMemeAudio();
+        audio.stopCurrentVoice();
         const modal = document.getElementById('soundboardModal');
         if (modal) modal.classList.remove('active');
       });
     }
+
+    // Initial check of voice availability
+    this.updateSoundboardPills();
   }
 }
 

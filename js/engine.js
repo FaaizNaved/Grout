@@ -3,11 +3,14 @@
 import { audio } from './audio.js';
 
 export class GroutEngine {
-  constructor(canvas, onProgress, onComplete) {
+  constructor(canvas, onProgress, onComplete, onFailure) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.onProgress = onProgress;
     this.onComplete = onComplete;
+    this.onFailure = onFailure;
+    this.onTimerTick = null;
+    this.onFragilityChange = null;
 
     this.currentLevel = null;
     this.gaps = [];
@@ -20,8 +23,8 @@ export class GroutEngine {
 
     // Configurable gameplay thresholds
     this.config = {
-      targetGroutCoverage: 90, // % of joints filled
-      targetHazeCleaning: 90,   // % of excess haze buffed
+      targetGroutCoverage: 84, // % of joints filled
+      targetHazeCleaning: 84,   // % of excess haze buffed
       minHazeThreshold: 6      // minimum haze patches generated before level can be completed
     };
 
@@ -39,21 +42,37 @@ export class GroutEngine {
     this.strokes = [];
     this.currentStroke = null;
 
-    // Particles (Natural plaster & stone dust)
+    // Particles & Floating feedback
     this.particles = [];
     this.floatingTexts = [];
+    this.blowoutMarks = [];
 
     // Combo system
     this.combo = 0;
     this.comboTimer = null;
     this.isCompleted = false;
+    this.isFailed = false;
+
+    // Level-specific mechanics state
+    this.activeBlowouts = 0;
+
+    // Level 4 Curing & Countdown Timer
+    this.timeRemaining = 75;
+    this.countdownTimer = null;
+
+    // Level 5 Restoration Puzzle & Fragility
+    this.restorationStage = 1; // 1 = Puzzle, 2 = Grouting
+    this.fragility = 0;
+    this.sockets = [];
+    this.loosePieces = [];
+    this.draggedPiece = null;
+    this.dragOffset = { x: 0, y: 0 };
 
     // Endless Mode & Contextual Audio state
     this.endlessWave = 1;
     this.onWaveComplete = null;
     this.hasTriggeredFirstGroutMeme = false;
     this.hasTriggeredCleanMeme = false;
-    this.hasTriggeredComboMeme = false;
 
     this.setupListeners();
     this.handleResize();
@@ -82,17 +101,12 @@ export class GroutEngine {
 
     let newHeight;
     if (isLandscape) {
-      // In short landscape viewports, allocate height so header, HUD, stages ribbon, canvas and tool deck
-      // fit comfortably within the viewport without vertical scrolling.
-      // Budget: windowH minus header(~26px) + HUD(~24px) + stages(~21px) + tool-deck(~32px) + paddings/gaps(~40px) = ~145px
       const maxAvailableH = Math.max(windowH - 155, 140);
       newHeight = Math.min(Math.round(newWidth * 0.48), maxAvailableH, 240);
     } else if (windowW <= 680) {
-      // In mobile portrait viewports, ensure canvas doesn't push tool deck below initial fold
       const maxPortraitH = Math.max(Math.round(windowH * 0.42), 220);
       newHeight = Math.min(Math.round(newWidth * 0.74), maxPortraitH, 420);
     } else {
-      // In desktop viewports, maintain standard spacious artisanal canvas dimensions
       newHeight = Math.min(Math.round(rect.height || newWidth * 0.80), 560);
     }
 
@@ -151,6 +165,17 @@ export class GroutEngine {
     this.gapIntervals.set(gapIdx, result);
   }
 
+  rebuildGapIntervals(gapIdx) {
+    const pts = this.samplePoints.filter(p => p.gapIdx === gapIdx && p.filled);
+    const intervals = [];
+    pts.forEach(p => {
+      const s = Math.max(0, (p.index - 0.5) / p.totalSteps);
+      const e = Math.min(1, (p.index + 0.5) / p.totalSteps);
+      intervals.push([s, e]);
+    });
+    this.gapIntervals.set(gapIdx, intervals);
+  }
+
   resizeLevel(oldWidth, oldHeight, newWidth, newHeight) {
     if (newWidth === undefined && newHeight === undefined) {
       newWidth = oldWidth;
@@ -166,7 +191,7 @@ export class GroutEngine {
     const scaleX = newWidth / oldWidth;
     const scaleY = newHeight / oldHeight;
 
-    // 1. Rescale all recorded grout strokes proportionally to preserve geometry
+    // 1. Rescale all recorded grout strokes proportionally
     this.strokes.forEach(stroke => {
       if (stroke.points) {
         stroke.points.forEach(p => {
@@ -198,7 +223,6 @@ export class GroutEngine {
         const ptEnd = Math.min(1, (i + 0.5) / steps);
         const ptWidth = ptEnd - ptStart;
 
-        // Exact intersection calculation with canonical filled intervals on this gap
         let overlap = 0;
         for (const [s, e] of intervals) {
           const interStart = Math.max(ptStart, s);
@@ -208,7 +232,6 @@ export class GroutEngine {
           }
         }
 
-        // A point is filled if at least 50% of its interval was covered
         const isFilled = ptWidth > 0 && (overlap / ptWidth) >= 0.50;
 
         if (isFilled) {
@@ -228,7 +251,26 @@ export class GroutEngine {
       }
     });
 
-    // 3. Update progress callback with preserved coverage and haze metrics
+    // Level 5 puzzle pieces coordinate rescaling
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle) {
+      const restoData = this.currentLevel.getRestorationData(newWidth, newHeight);
+      this.sockets = restoData.sockets;
+      // Preserve placed status
+      if (this.loosePieces) {
+        this.loosePieces.forEach((p, i) => {
+          const fresh = restoData.loosePieces[i];
+          if (fresh) {
+            if (p.placed) {
+              fresh.placed = true;
+              fresh.x = fresh.targetX;
+              fresh.y = fresh.targetY;
+            }
+          }
+        });
+        this.loosePieces = restoData.loosePieces;
+      }
+    }
+
     this.notifyProgress();
   }
 
@@ -237,9 +279,11 @@ export class GroutEngine {
     this.groutColor = level.groutColor || '#B45309';
     this.groutBorder = level.groutBorder || '#92400E';
     this.isCompleted = false;
+    this.isFailed = false;
     this.strokes = [];
     this.particles = [];
     this.floatingTexts = [];
+    this.blowoutMarks = [];
     this.combo = 0;
     this.tool = 'trowel';
     this.gapIntervals = new Map();
@@ -250,7 +294,49 @@ export class GroutEngine {
     this.endlessWave = 1;
     this.hasTriggeredFirstGroutMeme = false;
     this.hasTriggeredCleanMeme = false;
-    this.hasTriggeredComboMeme = false;
+
+    // Reset level-specific mechanics
+    this.activeBlowouts = 0;
+    this.timeRemaining = level.overallDeadlineSec || 75;
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
+
+    if (level.hasCuringTimer) {
+      this.countdownTimer = setInterval(() => {
+        if (this.isCompleted || this.isFailed) {
+          clearInterval(this.countdownTimer);
+          return;
+        }
+        this.timeRemaining--;
+        if (this.onTimerTick) {
+          this.onTimerTick(this.timeRemaining);
+        }
+        if (this.timeRemaining <= 0) {
+          clearInterval(this.countdownTimer);
+          const metrics = this.getMetrics();
+          if (metrics.hazeCleaning < 50) {
+            this.triggerLevelFailure(
+              "CAFE SHUTDOWN: MESS ABOVE 50%",
+              "Remaining mess above 50%! Barista counter covered in hardened grout."
+            );
+          } else {
+            this.triggerLevelFailure(
+              "DEADLINE EXPIRED",
+              "Opening health inspection arrived before the café counter was fully sealed!"
+            );
+          }
+        }
+      }, 1000);
+    }
+
+    if (level.hasRestorationPuzzle) {
+      this.restorationStage = 1; // Stage 1 Puzzle
+      this.fragility = 0;
+      this.draggedPiece = null;
+      if (this.onFragilityChange) this.onFragilityChange(0);
+    } else {
+      this.restorationStage = 2; // Normal grouting
+    }
+
     this.initLevel(level, true);
     this.notifyProgress();
   }
@@ -285,12 +371,24 @@ export class GroutEngine {
       }
     });
 
+    if (level.hasRestorationPuzzle && level.getRestorationData) {
+      const restoData = level.getRestorationData(this.width, this.height);
+      this.sockets = restoData.sockets;
+      this.loosePieces = restoData.loosePieces;
+    }
+
     if (playGreeting) {
       audio.playChime(1);
     }
   }
 
   setTool(tool) {
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) {
+      // Locked during puzzle stage
+      audio.playErrorTone();
+      this.addFloatingText("🔒 RESTORATION PUZZLE IN PROGRESS: Place missing pieces first!", this.width / 2, this.height * 0.4);
+      return;
+    }
     this.tool = tool;
     if (tool === 'sponge') {
       audio.playSponge();
@@ -323,10 +421,32 @@ export class GroutEngine {
     const onStart = (e) => {
       e.preventDefault();
       audio.ensureContext();
-      this.isDragging = true;
+      if (this.isFailed || this.isCompleted) return;
+
       const pos = this.getPointerPos(e);
       this.lastPos = pos;
       this.currentPos = pos;
+      this.isDragging = true;
+
+      // Stage 1 Restoration Puzzle drag check
+      if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) {
+        if (this.loosePieces) {
+          for (let i = this.loosePieces.length - 1; i >= 0; i--) {
+            const piece = this.loosePieces[i];
+            if (!piece.placed) {
+              const inside = (pos.x >= piece.x - 5 && pos.x <= piece.x + piece.w + 5 &&
+                              pos.y >= piece.y - 5 && pos.y <= piece.y + piece.h + 5);
+              if (inside) {
+                this.draggedPiece = piece;
+                this.dragOffset = { x: pos.x - piece.x, y: pos.y - piece.y };
+                audio.playScrape();
+                return;
+              }
+            }
+          }
+        }
+        return;
+      }
 
       if (this.tool === 'trowel') {
         this.currentStroke = {
@@ -346,8 +466,15 @@ export class GroutEngine {
       const pos = this.getPointerPos(e);
       this.currentPos = pos;
 
-      if (!this.isDragging) return;
+      if (!this.isDragging || this.isFailed || this.isCompleted) return;
       e.preventDefault();
+
+      // Stage 1 Restoration Puzzle drag update
+      if (this.draggedPiece) {
+        this.draggedPiece.x = pos.x - this.dragOffset.x;
+        this.draggedPiece.y = pos.y - this.dragOffset.y;
+        return;
+      }
 
       if (this.lastPos) {
         const dx = pos.x - this.lastPos.x;
@@ -376,10 +503,52 @@ export class GroutEngine {
     };
 
     const onEnd = () => {
-      if (this.isDragging) {
-        this.isDragging = false;
-        this.lastPos = null;
-        this.currentStroke = null;
+      if (!this.isDragging) return;
+      this.isDragging = false;
+      this.lastPos = null;
+      this.currentStroke = null;
+
+      // Stage 1 Puzzle piece drop resolution
+      if (this.draggedPiece) {
+        const p = this.draggedPiece;
+        const centerDist = Math.hypot(
+          (p.x + p.w / 2) - (p.targetX + p.w / 2),
+          (p.y + p.h / 2) - (p.targetY + p.h / 2)
+        );
+
+        if (centerDist <= 30) {
+          // Snap correctly into place
+          p.x = p.targetX;
+          p.y = p.targetY;
+          p.placed = true;
+          audio.playScrape();
+          audio.playChime(3);
+          this.addFloatingText("✦ RESTORED & SNAPPED!", p.x + p.w / 2, p.y - 12);
+          this.spawnSpongeSparkles(p.x + p.w / 2, p.y + p.h / 2);
+
+          const unplaced = this.loosePieces.filter(item => !item.placed);
+          if (unplaced.length === 0) {
+            // Stage 1 complete! Unlock Stage 2
+            this.restorationStage = 2;
+            audio.playFanfare();
+            this.addFloatingText("STAGE 1 COMPLETE! GROUTING UNLOCKED 🏛️", this.width / 2, this.height * 0.45);
+          }
+        } else {
+          // Jarring drop -> increase fragility
+          this.fragility = Math.min(100, this.fragility + 15);
+          audio.playErrorTone();
+          this.addFloatingText("⚠️ FRAGILITY +15% (Jarring Drop)", p.x + p.w / 2, p.y - 15);
+          if (this.onFragilityChange) this.onFragilityChange(this.fragility);
+
+          if (this.fragility >= 100) {
+            this.triggerLevelFailure(
+              "RESTORATION FAILED",
+              "Ancient Roman mosaic shattered under excessive impact pressure! Fragility reached 100%."
+            );
+          }
+        }
+        this.draggedPiece = null;
+        this.notifyProgress();
       }
     };
 
@@ -403,6 +572,46 @@ export class GroutEngine {
     window.addEventListener('touchcancel', onEnd);
   }
 
+  triggerLevelFailure(title, reason) {
+    if (this.isFailed || this.isCompleted) return;
+    this.isFailed = true;
+    if (this.countdownTimer) clearInterval(this.countdownTimer);
+    audio.playErrorTone();
+    audio.triggerMemeSound('level_failure_reaction');
+
+    if (this.onFailure) {
+      this.onFailure(this.currentLevel, title, reason);
+    }
+  }
+
+  triggerBlowout(x, y, gapIdx) {
+    this.activeBlowouts++;
+    audio.playErrorTone();
+    this.addFloatingText("⚠️ GROUT BLOWOUT! (-10% Progress)", x, y - 20);
+
+    // Penalize 10% of total filled points around this location
+    const penaltyCount = Math.max(1, Math.round(this.samplePoints.length * 0.10));
+    let unsealed = 0;
+
+    for (const pt of this.samplePoints) {
+      if (pt.filled && unsealed < penaltyCount) {
+        const dSq = (pt.x - x) * (pt.x - x) + (pt.y - y) * (pt.y - y);
+        if (dSq < 65 * 65) {
+          pt.filled = false;
+          unsealed++;
+          this.filledPointsCount = Math.max(0, this.filledPointsCount - 1);
+        }
+      }
+    }
+
+    if (this.gapIntervals.has(gapIdx)) {
+      this.rebuildGapIntervals(gapIdx);
+    }
+
+    this.blowoutMarks.push({ x, y, radius: 20, color: '#DC2626', alpha: 0.90 });
+    this.notifyProgress();
+  }
+
   spawnSquelchParticles(x, y) {
     for (let i = 0; i < 2; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -421,7 +630,6 @@ export class GroutEngine {
   }
 
   spawnSpongeSparkles(x, y) {
-    // Soft limestone buff powder
     for (let i = 0; i < 3; i++) {
       this.particles.push({
         x: x + (Math.random() - 0.5) * 20,
@@ -438,14 +646,13 @@ export class GroutEngine {
   }
 
   spawnConfetti() {
-    // Natural celebratory earth pigments
     const colors = ['#9A3412', '#B45309', '#D97706', '#2D6A4F', '#F5F2EB', '#78716C'];
     for (let i = 0; i < 60; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 2 + Math.random() * 6;
       this.particles.push({
         x: this.width / 2,
-        y: this.height / 2,
+        y: this.height * 0.4,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed - 2.5,
         radius: 3 + Math.random() * 3.5,
@@ -482,14 +689,35 @@ export class GroutEngine {
 
     const groutReady = groutCoverage >= targetGrout;
     const hazeReady = hazeCleaning >= targetClean && this.totalHazeDeposited >= this.config.minHazeThreshold;
-    const isComplete = groutReady && hazeReady;
+    
+    // Level-specific readiness requirements
+    let blowoutReady = true;
+    if (this.currentLevel && this.currentLevel.hasBlowoutMechanic) {
+      blowoutReady = this.activeBlowouts === 0;
+    }
+
+    let restorationReady = true;
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle) {
+      restorationReady = (this.restorationStage === 2) && (this.fragility < 100);
+    }
+
+    let timeReady = true;
+    if (this.currentLevel && this.currentLevel.hasCuringTimer) {
+      timeReady = this.timeRemaining > 0;
+    }
+
+    const isComplete = groutReady && hazeReady && blowoutReady && restorationReady && timeReady;
 
     const roundedGrout = Math.min(Math.round(groutCoverage), 100);
     const roundedHaze = Math.min(Math.round(hazeCleaning), 100);
     const compositeScore = Math.min(Math.round((roundedGrout * 0.5) + (roundedHaze * 0.5)), 100);
 
     let statusText = 'Phase 1: Fill joints with trowel';
-    if (groutReady && !hazeReady) {
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) {
+      statusText = 'Stage 1: Drag loose mosaic pieces into vacant sockets';
+    } else if (this.currentLevel && this.currentLevel.hasBlowoutMechanic && this.activeBlowouts > 0) {
+      statusText = '⚠️ Blowout active! Re-trowel damaged joint carefully';
+    } else if (groutReady && !hazeReady) {
       statusText = 'Phase 2: Buff excess haze with sponge';
     } else if (isComplete) {
       statusText = 'Level Complete! Babu Mistri Approved';
@@ -505,9 +733,16 @@ export class GroutEngine {
       targetClean,
       groutReady,
       hazeReady,
+      blowoutReady,
+      restorationReady,
+      timeReady,
       isComplete,
       totalHaze: this.totalHazeDeposited,
       cleanedHaze: this.cleanedHazeCount,
+      activeBlowouts: this.activeBlowouts,
+      fragility: this.fragility,
+      timeRemaining: this.timeRemaining,
+      restorationStage: this.restorationStage,
       statusText
     };
   }
@@ -520,11 +755,13 @@ export class GroutEngine {
   }
 
   checkLevelCompletion() {
-    if (this.isCompleted) return;
+    if (this.isCompleted || this.isFailed) return;
 
     const metrics = this.getMetrics();
     if (metrics.isComplete) {
-      if (this.currentLevel && (this.currentLevel.id === 9 || this.currentLevel.isEndless)) {
+      if (this.countdownTimer) clearInterval(this.countdownTimer);
+
+      if (this.currentLevel && (this.currentLevel.id === 6 || this.currentLevel.isEndless)) {
         this.advanceEndlessWave(metrics);
         return;
       }
@@ -532,7 +769,12 @@ export class GroutEngine {
       this.isCompleted = true;
       this.spawnConfetti();
       audio.playFanfare();
-      audio.triggerMemeSound('mistri_op');
+
+      if (this.currentLevel && this.currentLevel.isBossLevel) {
+        audio.triggerMemeSound('restoration_victory');
+      } else {
+        audio.triggerMemeSound('level_complete_mistri_op');
+      }
 
       if (this.onComplete) {
         this.onComplete(this.currentLevel, metrics);
@@ -555,7 +797,6 @@ export class GroutEngine {
     this.cleanedHazeCount = 0;
     this.hasTriggeredFirstGroutMeme = false;
     this.hasTriggeredCleanMeme = false;
-    this.hasTriggeredComboMeme = false;
 
     this.initLevel(this.currentLevel, false);
     this.notifyProgress();
@@ -614,7 +855,6 @@ export class GroutEngine {
     if (this.hazeGrid.has(key)) {
       const patch = this.hazeGrid.get(key);
       if (patch.cleaned) {
-        // Re-soiling an area that was previously cleaned
         patch.cleaned = false;
         patch.opacity = 0.65;
         this.cleanedHazeCount = Math.max(0, this.cleanedHazeCount - 1);
@@ -630,7 +870,10 @@ export class GroutEngine {
         radius: 14 + Math.random() * 8,
         opacity: 0.60 + Math.random() * 0.20,
         cleaned: false,
-        color: this.groutColor
+        color: this.groutColor,
+        depositedAt: performance.now(),
+        passesRequired: 1,
+        isCured: false
       };
       this.hazeGrid.set(key, patch);
       this.hazePatches.push(patch);
@@ -695,7 +938,6 @@ export class GroutEngine {
       const px = p1.x + dx * t;
       const py = p1.y + dy * t;
 
-      // Only deposit haze if this stroke point intersects or borders an actual grout joint
       if (!this.isNearAnyGap(px, py, 28)) {
         continue;
       }
@@ -725,17 +967,18 @@ export class GroutEngine {
   }
 
   checkGroutFill(p1, p2) {
-    if (this.isCompleted) return;
+    if (this.isCompleted || this.isFailed) return;
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) return;
 
     let newlyFilled = 0;
     let hazeChanged = false;
     const thresholdDist = 26;
     const thresholdDistSq = thresholdDist * thresholdDist;
-
     const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
 
-    this.samplePoints.forEach(pt => {
-      if (!pt.filled) {
+    // LEVEL 3 COLOR VALIDATION CHECK
+    if (this.currentLevel && this.currentLevel.hasColorMatching) {
+      for (const pt of this.samplePoints) {
         let dSq;
         if (hasSegment) {
           dSq = this.distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y);
@@ -744,6 +987,33 @@ export class GroutEngine {
         }
 
         if (dSq <= thresholdDistSq) {
+          const gap = this.gaps[pt.gapIdx];
+          if (gap && gap.requiredColor) {
+            const activeColor = (this.groutColor || '').toLowerCase();
+            const reqColor = (gap.requiredColor || '').toLowerCase();
+            if (activeColor !== reqColor) {
+              const reqName = gap.requiredColor === '#F5F2EB' ? 'Chalk Limestone White' : 'Burnt Terracotta';
+              this.triggerLevelFailure(
+                "COLOR MISMATCH FAILURE",
+                `Babu Mistri applied the wrong grout color to this Moroccan section! This section requires ${reqName}. Moroccan master demands restart.`
+              );
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    this.samplePoints.forEach(pt => {
+      let dSq;
+      if (hasSegment) {
+        dSq = this.distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y);
+      } else {
+        dSq = (pt.x - p2.x) * (pt.x - p2.x) + (pt.y - p2.y) * (pt.y - p2.y);
+      }
+
+      if (dSq <= thresholdDistSq) {
+        if (!pt.filled) {
           pt.filled = true;
           newlyFilled++;
           this.filledPointsCount++;
@@ -752,6 +1022,24 @@ export class GroutEngine {
           this.addIntervalToGap(pt.gapIdx, ptStart, ptEnd);
           if (this.depositHazeAround(pt.x, pt.y)) {
             hazeChanged = true;
+          }
+
+          // If this area was a blowout, sealing it clears blowout counter
+          if (this.activeBlowouts > 0 && Math.random() < 0.20) {
+            this.activeBlowouts = Math.max(0, this.activeBlowouts - 1);
+            this.addFloatingText("BLOWOUT RE-SEALED! 🧱", pt.x, pt.y - 15);
+          }
+        } else {
+          // LEVEL 2 BLOWOUT MECHANIC: Violent scrubbing on already filled joint
+          if (this.currentLevel && this.currentLevel.hasBlowoutMechanic && hasSegment) {
+            const speed = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            if (speed > 16) {
+              pt.scrubHeat = (pt.scrubHeat || 0) + 1;
+              if (pt.scrubHeat >= 6) {
+                pt.scrubHeat = 0;
+                this.triggerBlowout(pt.x, pt.y, pt.gapIdx);
+              }
+            }
           }
         }
       }
@@ -772,14 +1060,18 @@ export class GroutEngine {
     if (newlyFilled > 0) {
       if (!this.hasTriggeredFirstGroutMeme) {
         this.hasTriggeredFirstGroutMeme = true;
-        audio.triggerMemeSound('grout_bhar_denge');
+        audio.triggerMemeSound('intro_grout_bhar_denge');
       }
 
       this.combo++;
       if (this.comboTimer) clearTimeout(this.comboTimer);
       this.comboTimer = setTimeout(() => {
         this.combo = 0;
-      }, 700);
+        audio.triggerStreakReaction(0, 5); // resets streak trigger
+      }, 800);
+
+      // Streak Voice reaction at 5x threshold
+      audio.triggerStreakReaction(this.combo, 5);
 
       if (this.combo > 0 && this.combo % 12 === 0) {
         const chimeNote = Math.min(Math.floor(this.combo / 12), 7);
@@ -787,15 +1079,9 @@ export class GroutEngine {
         const praiseList = ["PERFECT JOINT", "SMOOTH SPREAD", "MISTRI APPROVED", "TRUE JUGAAD"];
         const praise = praiseList[Math.floor(Math.random() * praiseList.length)];
         this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, p2.x, p2.y - 20);
-
-        if (!this.hasTriggeredComboMeme) {
-          this.hasTriggeredComboMeme = true;
-          audio.triggerMemeSound('heavy_driver');
-        }
       }
     }
 
-    // Immediately synchronize metrics and notify progress listeners on any state change
     if (newlyFilled > 0 || hazeChanged) {
       this.notifyProgress();
       this.checkLevelCompletion();
@@ -803,14 +1089,15 @@ export class GroutEngine {
   }
 
   checkSpongeCleaning(p1, p2) {
-    if (this.isCompleted) return;
+    if (this.isCompleted || this.isFailed) return;
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) return;
     if (this.totalHazeDeposited === 0) return;
 
     let newlyCleaned = 0;
     const spongeRadius = 36;
     const spongeRadiusSq = spongeRadius * spongeRadius;
-
     const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
+    const now = performance.now();
 
     for (let i = 0; i < this.hazePatches.length; i++) {
       const patch = this.hazePatches[i];
@@ -824,6 +1111,28 @@ export class GroutEngine {
         : (px - p2.x) * (px - p2.x) + (py - p2.y) * (py - p2.y);
 
       if (dSq <= spongeRadiusSq) {
+        // LEVEL 4 CURING CHECK: After 30s, haze becomes cured and takes 3 passes
+        if (this.currentLevel && this.currentLevel.hasCuringTimer) {
+          const ageSec = (now - (patch.depositedAt || now)) / 1000;
+          if (ageSec >= (this.currentLevel.curingDelaySec || 30)) {
+            if (!patch.isCured) {
+              patch.isCured = true;
+              patch.passesRequired = 3;
+            }
+          }
+        }
+
+        if (patch.isCured) {
+          if (patch.passesRequired === undefined) patch.passesRequired = 3;
+          patch.passesRequired -= 1;
+          if (patch.passesRequired > 0) {
+            patch.opacity = Math.max(0.2, patch.opacity * 0.65);
+            this.addFloatingText(`HARDENED CEMENT (${patch.passesRequired} pass left)`, px, py - 10);
+            this.spawnSpongeSparkles(px, py);
+            continue; // Needs more scrubs
+          }
+        }
+
         patch.cleaned = true;
         patch.opacity = 0;
         newlyCleaned++;
@@ -837,7 +1146,11 @@ export class GroutEngine {
       if (this.comboTimer) clearTimeout(this.comboTimer);
       this.comboTimer = setTimeout(() => {
         this.combo = 0;
-      }, 700);
+        audio.triggerStreakReaction(0, 5); // resets streak trigger
+      }, 800);
+
+      // Streak Voice reaction at 5x threshold
+      audio.triggerStreakReaction(this.combo, 5);
 
       if (this.combo > 0 && this.combo % 12 === 0) {
         const chimeNote = Math.min(Math.floor(this.combo / 12), 7);
@@ -845,11 +1158,6 @@ export class GroutEngine {
         const cleanPraises = ["SPARKLING TILE", "HAZE BUFFED", "CLEAN GLAZE", "MISTRI SHINE"];
         const praise = cleanPraises[Math.floor(Math.random() * cleanPraises.length)];
         this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, p2.x, p2.y - 20);
-
-        if (!this.hasTriggeredComboMeme) {
-          this.hasTriggeredComboMeme = true;
-          audio.triggerMemeSound('heavy_driver');
-        }
       }
 
       const metrics = this.getMetrics();
@@ -861,24 +1169,6 @@ export class GroutEngine {
       this.notifyProgress();
       this.checkLevelCompletion();
     }
-  }
-
-  drawHeart(ctx, x, y, width, height) {
-    ctx.save();
-    ctx.beginPath();
-    const topCurveHeight = height * 0.3;
-    ctx.moveTo(x, y + topCurveHeight);
-    ctx.bezierCurveTo(x, y, x - width / 2, y, x - width / 2, y + topCurveHeight);
-    ctx.bezierCurveTo(x - width / 2, y + (height + topCurveHeight) / 2, x, y + (height + topCurveHeight) / 2, x, y + height);
-    ctx.bezierCurveTo(x, y + (height + topCurveHeight) / 2, x + width / 2, y + (height + topCurveHeight) / 2, x + width / 2, y + topCurveHeight);
-    ctx.bezierCurveTo(x + width / 2, y, x, y, x, y + topCurveHeight);
-    ctx.closePath();
-    ctx.fillStyle = '#9F1239'; // Deep Rose Clay
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#881337';
-    ctx.stroke();
-    ctx.restore();
   }
 
   render() {
@@ -893,40 +1183,113 @@ export class GroutEngine {
     ctx.fillStyle = '#292524';
     ctx.fillRect(8, 8, width - 16, height - 16);
 
-    // Render Tiles
-    if (this.currentLevel && this.currentLevel.isHeartShape) {
-      this.drawHeart(ctx, width / 2, height / 2 - height * 0.35, width * 0.68, height * 0.64);
-    } else if (this.currentLevel && this.currentLevel.tiles) {
+    // Render Tiles (Polygonal or Rectangular)
+    if (this.currentLevel && this.currentLevel.tiles) {
       const tiles = this.currentLevel.tiles(width, height, this.endlessWave || 1);
       tiles.forEach((tile) => {
-        // Natural soft tile drop shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(tile.x + 3, tile.y + 3, tile.w, tile.h);
+        if (tile.polygon) {
+          // Render Polygonal Tile (Level 2 Hexagons, Level 3 Moroccan Stars/Crosses)
+          ctx.beginPath();
+          tile.polygon.forEach((pt, i) => {
+            if (i === 0) ctx.moveTo(pt.x + 2, pt.y + 2);
+            else ctx.lineTo(pt.x + 2, pt.y + 2);
+          });
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+          ctx.fill();
 
-        // Tile body (matte limestone/porcelain finish)
-        ctx.fillStyle = this.currentLevel.tileColor || '#FAF8F5';
-        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+          ctx.beginPath();
+          tile.polygon.forEach((pt, i) => {
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+          });
+          ctx.closePath();
+          ctx.fillStyle = tile.color || this.currentLevel.tileColor || '#FAF8F5';
+          ctx.fill();
 
-        // Subtle matte bevel
-        const grad = ctx.createLinearGradient(tile.x, tile.y, tile.x + tile.w, tile.y + tile.h);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+          ctx.strokeStyle = tile.border || this.currentLevel.tileBorder || '#E5E0D8';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
 
-        // Border
-        ctx.strokeStyle = this.currentLevel.tileBorder || '#E5E0D8';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
+          if (tile.label) {
+            let cx = 0, cy = 0;
+            tile.polygon.forEach(pt => { cx += pt.x; cy += pt.y; });
+            cx /= tile.polygon.length;
+            cy /= tile.polygon.length;
+            ctx.font = '500 9px "JetBrains Mono", monospace';
+            ctx.fillStyle = '#64748B';
+            ctx.textAlign = 'center';
+            ctx.fillText(tile.label, cx, cy + 3);
+          }
+        } else {
+          // Render Rectangular Tile
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+          ctx.fillRect(tile.x + 3, tile.y + 3, tile.w, tile.h);
 
-        // Architectural specification text on tile
-        if (tile.label) {
-          ctx.font = '500 10px "JetBrains Mono", monospace';
-          ctx.fillStyle = '#78716C';
-          ctx.textAlign = 'center';
-          ctx.fillText(tile.label, tile.x + tile.w / 2, tile.y + tile.h / 2);
+          ctx.fillStyle = tile.color || this.currentLevel.tileColor || '#FAF8F5';
+          ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+
+          const grad = ctx.createLinearGradient(tile.x, tile.y, tile.x + tile.w, tile.y + tile.h);
+          grad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+
+          ctx.strokeStyle = tile.border || this.currentLevel.tileBorder || '#E5E0D8';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
+
+          if (tile.label) {
+            ctx.font = '500 10px "JetBrains Mono", monospace';
+            ctx.fillStyle = '#78716C';
+            ctx.textAlign = 'center';
+            ctx.fillText(tile.label, tile.x + tile.w / 2, tile.y + tile.h / 2 + 3);
+          }
         }
       });
+    }
+
+    // Level 5 Boss Restoration Sockets & Puzzle Pieces
+    if (this.currentLevel && this.currentLevel.hasRestorationPuzzle) {
+      // Draw target sockets
+      if (this.sockets) {
+        this.sockets.forEach(sock => {
+          ctx.save();
+          ctx.setLineDash([5, 4]);
+          ctx.strokeStyle = '#D97706'; // Gold dashed target outline
+          ctx.lineWidth = 2;
+          ctx.strokeRect(sock.x, sock.y, sock.w, sock.h);
+          ctx.fillStyle = 'rgba(217, 119, 6, 0.12)';
+          ctx.fillRect(sock.x, sock.y, sock.w, sock.h);
+          ctx.font = '600 10px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#D97706';
+          ctx.textAlign = 'center';
+          ctx.fillText(`Target: ${sock.name}`, sock.x + sock.w / 2, sock.y + sock.h / 2 + 3);
+          ctx.restore();
+        });
+      }
+
+      // Draw loose puzzle pieces (tray & dragged)
+      if (this.loosePieces) {
+        this.loosePieces.forEach(piece => {
+          ctx.save();
+          if (piece === this.draggedPiece) {
+            ctx.shadowColor = 'rgba(217, 119, 6, 0.6)';
+            ctx.shadowBlur = 12;
+          }
+          ctx.fillStyle = piece.color || '#D97706';
+          ctx.fillRect(piece.x, piece.y, piece.w, piece.h);
+          ctx.strokeStyle = piece.placed ? '#22C55E' : '#FFFFFF';
+          ctx.lineWidth = piece.placed ? 2 : 1.5;
+          ctx.strokeRect(piece.x, piece.y, piece.w, piece.h);
+
+          ctx.font = '700 9px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#FFFFFF';
+          ctx.textAlign = 'center';
+          ctx.fillText(piece.placed ? '✓ Restored' : piece.name, piece.x + piece.w / 2, piece.y + piece.h / 2 + 3);
+          ctx.restore();
+        });
+      }
     }
 
     // Draw Unfilled Gap Cavities
@@ -934,69 +1297,122 @@ export class GroutEngine {
       ctx.beginPath();
       ctx.moveTo(gap.x1, gap.y1);
       ctx.lineTo(gap.x2, gap.y2);
-      ctx.strokeStyle = '#141211'; // Deep recessed cavity
+      ctx.strokeStyle = '#18181B';
       ctx.lineWidth = gap.width || 24;
       ctx.lineCap = 'round';
       ctx.stroke();
-
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.lineWidth = (gap.width || 24) * 0.5;
-      ctx.stroke();
     });
 
-    // Draw Satin Grout Strokes
-    this.strokes.forEach(stroke => {
-      if (stroke.points.length < 2) return;
+    // Draw Filled Grout Intervals
+    this.gaps.forEach((gap, gapIdx) => {
+      const intervals = this.gapIntervals.get(gapIdx) || [];
+      const dx = gap.x2 - gap.x1;
+      const dy = gap.y2 - gap.y1;
+      const color = gap.requiredColor || this.currentLevel.groutColor || this.groutColor;
+      const border = gap.requiredColor || this.currentLevel.groutBorder || this.groutBorder;
 
-      // Outer joint border
+      intervals.forEach(([startT, endT]) => {
+        const sx = gap.x1 + dx * startT;
+        const sy = gap.y1 + dy * startT;
+        const ex = gap.x1 + dx * endT;
+        const ey = gap.y1 + dy * endT;
+
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = border;
+        ctx.lineWidth = (gap.width || 24) * 0.95;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(ex, ey);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = (gap.width || 24) * 0.85;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      });
+    });
+
+    // Draw Grout Strokes
+    this.strokes.forEach(stroke => {
+      if (!stroke.points || stroke.points.length < 2) return;
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
       for (let i = 1; i < stroke.points.length; i++) {
         ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
       }
+      ctx.strokeStyle = stroke.borderColor || stroke.color;
+      ctx.lineWidth = stroke.width || 24;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = stroke.borderColor;
-      ctx.lineWidth = stroke.width + 2;
       ctx.stroke();
 
-      // Main paste
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      }
       ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.width;
-      ctx.stroke();
-
-      // Soft natural satin surface highlight
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = stroke.width * 0.28;
+      ctx.lineWidth = (stroke.width || 24) * 0.85;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.stroke();
     });
 
-    // Draw Excess Grout Haze Layer (natural powdery paste film on tile surfaces)
-    if (this.hazePatches && this.hazePatches.length > 0) {
-      const scaleRef = Math.max(0.6, width / 600);
-      for (let i = 0; i < this.hazePatches.length; i++) {
-        const patch = this.hazePatches[i];
-        if (patch.cleaned || patch.opacity <= 0.02) continue;
+    // Draw Excess Surface Grout Haze
+    const now = performance.now();
+    for (let i = 0; i < this.hazePatches.length; i++) {
+      const p = this.hazePatches[i];
+      if (p.cleaned || p.opacity <= 0.02) continue;
 
-        const hx = patch.u * width;
-        const hy = patch.v * height;
-        const r = patch.radius * scaleRef;
+      const px = p.u * width;
+      const py = p.v * height;
 
-        ctx.save();
-        ctx.globalAlpha = patch.opacity;
-        const radGrad = ctx.createRadialGradient(hx, hy, r * 0.15, hx, hy, r);
-        radGrad.addColorStop(0, patch.color || this.groutColor);
-        radGrad.addColorStop(0.65, patch.color || this.groutColor);
-        radGrad.addColorStop(1, 'rgba(180, 83, 9, 0)');
-        ctx.fillStyle = radGrad;
-        ctx.beginPath();
-        ctx.arc(hx, hy, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+      // Check curing age for Level 4
+      let isCured = p.isCured;
+      if (this.currentLevel && this.currentLevel.hasCuringTimer && !isCured) {
+        if ((now - (p.depositedAt || now)) / 1000 >= (this.currentLevel.curingDelaySec || 30)) {
+          p.isCured = true;
+          p.passesRequired = 3;
+          isCured = true;
+        }
       }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, py, p.radius, 0, Math.PI * 2);
+
+      if (isCured) {
+        // Hardened cured cement texture
+        ctx.fillStyle = `rgba(51, 65, 85, ${p.opacity * 0.95})`;
+        ctx.fill();
+        ctx.strokeStyle = '#1E293B';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        // Fresh workable haze
+        ctx.fillStyle = `rgba(180, 83, 9, ${p.opacity * 0.50})`;
+        ctx.fill();
+      }
+      ctx.restore();
     }
 
-    // Draw Plaster & Powder Particles
+    // Draw Blowout Damage Marks
+    this.blowoutMarks.forEach(b => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(220, 38, 38, ${b.alpha})`;
+      ctx.fill();
+      ctx.strokeStyle = '#B91C1C';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Draw Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
@@ -1010,19 +1426,19 @@ export class GroutEngine {
       }
 
       ctx.save();
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
       ctx.fill();
       ctx.restore();
     }
 
-    // Draw Floating Achievement Labels
+    // Draw Floating Texts
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
       const ft = this.floatingTexts[i];
       ft.y += ft.vy;
-      ft.alpha -= 0.025;
+      ft.alpha -= 0.018;
 
       if (ft.alpha <= 0) {
         this.floatingTexts.splice(i, 1);
@@ -1030,65 +1446,45 @@ export class GroutEngine {
       }
 
       ctx.save();
+      ctx.font = '700 12px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = '#FEF3C7';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowBlur = 6;
       ctx.globalAlpha = ft.alpha;
-      ctx.font = '600 11px "JetBrains Mono", monospace';
-      ctx.fillStyle = '#F5F1E8';
       ctx.textAlign = 'center';
       ctx.fillText(ft.text, ft.x, ft.y);
       ctx.restore();
     }
 
-    // Handcrafted Masonry Tool Cursor
-    if (this.currentPos) {
+    // Draw Tool Cursor in Canvas
+    if (this.currentPos && !this.isCompleted && !this.isFailed) {
+      const { x, y } = this.currentPos;
       ctx.save();
-      ctx.translate(this.currentPos.x, this.currentPos.y);
+      ctx.translate(x, y);
       ctx.rotate(this.toolAngle);
 
       if (this.tool === 'trowel') {
-        // Steel trowel blade with wood handle
-        ctx.fillStyle = '#D6D3D1';
-        ctx.strokeStyle = '#57534E';
-        ctx.lineWidth = 1.5;
+        // Trowel shape
         ctx.beginPath();
         ctx.moveTo(14, 0);
-        ctx.lineTo(-18, -16);
-        ctx.lineTo(-22, 16);
+        ctx.lineTo(-8, -10);
+        ctx.lineTo(-4, 0);
+        ctx.lineTo(-8, 10);
         ctx.closePath();
+        ctx.fillStyle = '#D97706';
         ctx.fill();
-        ctx.stroke();
-
-        // Grout paste dollop on blade
-        ctx.fillStyle = this.groutColor;
-        ctx.beginPath();
-        ctx.arc(0, 0, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Wood turned handle
-        ctx.fillStyle = '#78350F';
-        ctx.fillRect(-34, -4, 12, 8);
-      } else {
-        // Natural sea sponge block
-        ctx.fillStyle = '#E7E3DB';
-        ctx.strokeStyle = '#D6CEBF';
+        ctx.strokeStyle = '#B45309';
         ctx.lineWidth = 1.5;
-        ctx.fillRect(-16, -12, 32, 24);
-        ctx.strokeRect(-16, -12, 32, 24);
-
-        ctx.fillStyle = '#C4BEB3';
-        ctx.beginPath();
-        ctx.arc(-6, -3, 2, 0, Math.PI * 2);
-        ctx.arc(6, 4, 2.5, 0, Math.PI * 2);
-        ctx.arc(3, -5, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Sponge damp cleaning radius guide
-        ctx.beginPath();
-        ctx.arc(0, 0, 36, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(20, 184, 166, 0.40)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
         ctx.stroke();
-        ctx.setLineDash([]);
+      } else {
+        // Sponge circle
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+        ctx.fill();
+        ctx.strokeStyle = '#D97706';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
       }
       ctx.restore();
     }

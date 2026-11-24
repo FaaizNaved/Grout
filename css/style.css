@@ -434,6 +434,104 @@ body {
 .hud-right {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Autoplay Fallback Prompt */
+.autoplay-prompt {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.autoplay-btn {
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  color: #92400E;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.2);
+  transition: all 0.15s ease;
+}
+
+.autoplay-btn:hover {
+  background: #FDE68A;
+  transform: translateY(-1px);
+}
+
+.prompt-speaker-icon {
+  font-size: 0.90rem;
+}
+
+/* Level 4 Countdown Timer Pill */
+.timer-pill {
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.80rem;
+  font-weight: 700;
+  color: #92400E;
+}
+
+.timer-pill.urgent {
+  background: #FEE2E2;
+  border-color: #EF4444;
+  color: #B91C1C;
+  animation: pulse-timer 1s infinite alternate;
+}
+
+@keyframes pulse-timer {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
+}
+
+/* Level 5 Fragility Pill */
+.fragility-pill {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+}
+
+.fragility-label {
+  font-size: 0.60rem;
+  color: #64748B;
+  letter-spacing: 0.06em;
+}
+
+.fragility-val {
+  font-size: 0.80rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.fragility-pill.danger {
+  background: #FEF2F2;
+  border-color: #F87171;
+}
+
+.fragility-pill.danger .fragility-val {
+  color: #DC2626;
 }
 
 .streak-pill {
@@ -681,6 +779,46 @@ canvas#gameCanvas {
   max-width: 660px;
 }
 
+/* Level Failure Modal Styling */
+.modal-card-failure {
+  border-top: 4px solid #DC2626;
+}
+
+.ornament-failure {
+  color: #DC2626 !important;
+  font-weight: 700;
+}
+
+.heading-failure {
+  color: #991B1B !important;
+}
+
+.quote-failure {
+  border-left-color: #DC2626 !important;
+  background: #FEF2F2 !important;
+  color: #7F1D1D !important;
+}
+
+.btn-retry {
+  background: #DC2626 !important;
+  border-color: #B91C1C !important;
+}
+
+.btn-retry:hover {
+  background: #B91C1C !important;
+}
+
+/* Campaign Completion Grand Modal Styling */
+.modal-card-campaign {
+  border-top: 4px solid #D97706;
+  max-width: 540px;
+}
+
+.ornament-campaign {
+  color: #B45309 !important;
+  font-weight: 700;
+}
+
 .card-ornament {
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -903,13 +1041,15 @@ canvas#gameCanvas {
   border-radius: var(--radius-sm);
 }
 
-.chip-status-pill.verified {
+.chip-status-pill.verified,
+.chip-status-pill.installed {
   background: #ECFDF5;
   color: #047857;
   border: 1px solid #A7F3D0;
 }
 
-.chip-status-pill.slot {
+.chip-status-pill.slot,
+.chip-status-pill.awaiting {
   background: #FFFBEB;
   color: #B45309;
   border: 1px solid #FDE68A;
