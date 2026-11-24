@@ -167,7 +167,12 @@ body {
 }
 
 .bottom-strip {
-  /* Enforce minimum 150px separation between game canvas/controls and ad units per Google Game Ad placement guidance */
+  margin-top: 24px;
+}
+
+/* Enforce minimum 150px clearance from gameplay elements ONLY when an actual ad unit is active and rendered */
+.bottom-strip:has(.adsbygoogle[data-adsbygoogle-status="done"]),
+.bottom-strip.has-active-ad {
   margin-top: 150px;
 }
 
@@ -1011,6 +1016,227 @@ canvas#gameCanvas {
   }
 
   .bottom-strip {
+    margin-top: 20px;
+  }
+
+  .bottom-strip:has(.adsbygoogle[data-adsbygoogle-status="done"]),
+  .bottom-strip.has-active-ad {
     margin-top: 150px;
+  }
+}
+
+/* Short-Viewport & Mobile Landscape Layout Strategy (e.g. 844x390, 844x430, 740x390) */
+@media (max-height: 520px) and (min-width: 580px), (max-height: 520px) and (orientation: landscape) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .page-frame {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      "header header"
+      "sidebar hud"
+      "sidebar canvas"
+      "sidebar deck"
+      "colophon colophon";
+    gap: 6px 12px;
+    padding: 6px 12px 14px;
+    max-width: 960px;
+    box-sizing: border-box;
+  }
+
+  .site-header {
+    grid-area: header;
+    padding-bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand-glyph {
+    font-size: 1.1rem;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+  }
+
+  .brand-tag {
+    display: none;
+  }
+
+  .nav-btn {
+    padding: 3px 8px;
+    font-size: 0.70rem;
+  }
+
+  #topAdSlot {
+    display: none;
+  }
+
+  /* Left column: Inspection dispatch & stage buttons */
+  .inspection-report {
+    grid-area: sidebar;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+    gap: 5px;
+    overflow-y: auto;
+    max-height: calc(100vh - 54px);
+  }
+
+  .report-header {
+    padding-bottom: 3px;
+  }
+
+  .report-id, .report-case {
+    font-size: 0.58rem;
+  }
+
+  .badge-tag {
+    font-size: 0.58rem;
+    padding: 1px 5px;
+  }
+
+  .report-body {
+    gap: 4px;
+  }
+
+  .speaker-row {
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .speaker-role {
+    font-size: 0.55rem;
+    letter-spacing: 0.04em;
+  }
+
+  .quote-text {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    margin: 0;
+  }
+
+  .stages-ribbon {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 2px 0;
+  }
+
+  .level-pill {
+    padding: 2px 6px;
+    font-size: 0.60rem;
+  }
+
+  /* Right column: HUD, Canvas & Tool Deck */
+  .canvas-hud {
+    grid-area: hud;
+    padding: 3px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hud-left {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .hud-label {
+    font-size: 0.58rem;
+  }
+
+  .hud-title {
+    font-size: 0.80rem;
+  }
+
+  .hud-center {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 140px;
+  }
+
+  .progress-info {
+    font-size: 0.68rem;
+    margin-bottom: 0;
+  }
+
+  .meter-bar {
+    height: 6px;
+    width: 60px;
+  }
+
+  .hud-right {
+    display: none;
+  }
+
+  .viewport-box {
+    grid-area: canvas;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+  }
+
+  .tool-deck {
+    grid-area: deck;
+    padding: 3px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .deck-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .deck-btn {
+    padding: 4px 8px;
+    font-size: 0.70rem;
+  }
+
+  .deck-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .palette-hint {
+    display: none;
+  }
+
+  .swatch-btn {
+    width: 18px;
+    height: 18px;
+  }
+
+  .deck-btn-ghost, .deck-btn-accent {
+    padding: 4px 8px;
+    font-size: 0.70rem;
+  }
+
+  #bottomAdSlot {
+    display: none;
+  }
+
+  .colophon {
+    grid-area: colophon;
+    display: none;
   }
 }

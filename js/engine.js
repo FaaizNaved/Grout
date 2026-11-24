@@ -13,6 +13,7 @@ export class GroutEngine {
     this.gaps = [];
     this.samplePoints = [];
     this.filledPointsCount = 0;
+    this.gapIntervals = new Map();
     this.tool = 'trowel';
     this.groutColor = '#B45309';
     this.groutBorder = '#92400E';
@@ -52,14 +53,29 @@ export class GroutEngine {
     if (!rect.width) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    
-    // Fit viewport cleanly
+    const windowW = window.innerWidth;
+    const windowH = window.innerHeight;
+    const isLandscape = windowH <= 520 && windowW > windowH;
+
+    // Fit viewport or grid column width cleanly
     const newWidth = Math.min(Math.floor(rect.width), 720);
-    // On mobile viewports keep aspect ratio ~0.74 so canvas & tool deck remain above the fold
-    const isMobile = window.innerWidth <= 640;
-    const targetRatio = isMobile ? 0.74 : 0.80;
-    const newHeight = Math.min(Math.round(newWidth * targetRatio), 560);
-    
+
+    let newHeight;
+    if (isLandscape) {
+      // In short landscape viewports, allocate height so header, HUD, canvas and tool deck
+      // fit comfortably within the viewport without vertical scrolling.
+      // Budget: windowH minus header(~32px) + HUD(~28px) + tool-deck(~42px) + paddings(~40px) = ~145px
+      const maxAvailableH = Math.max(windowH - 145, 150);
+      newHeight = Math.min(Math.round(newWidth * 0.52), maxAvailableH, 260);
+    } else if (windowW <= 680) {
+      // In mobile portrait viewports, ensure canvas doesn't push tool deck below initial fold
+      const maxPortraitH = Math.max(Math.round(windowH * 0.42), 220);
+      newHeight = Math.min(Math.round(newWidth * 0.74), maxPortraitH, 420);
+    } else {
+      // In desktop viewports, maintain standard spacious artisanal canvas dimensions
+      newHeight = Math.min(Math.round(rect.height || newWidth * 0.80), 560);
+    }
+
     const oldWidth = this.width;
     const oldHeight = this.height;
 
@@ -87,13 +103,41 @@ export class GroutEngine {
     }
   }
 
+  addIntervalToGap(gapIdx, start, end) {
+    if (!this.gapIntervals.has(gapIdx)) {
+      this.gapIntervals.set(gapIdx, []);
+    }
+    const intervals = this.gapIntervals.get(gapIdx);
+    const result = [];
+    let inserted = false;
+
+    for (const [s, e] of intervals) {
+      if (end < s) {
+        if (!inserted) {
+          result.push([start, end]);
+          inserted = true;
+        }
+        result.push([s, e]);
+      } else if (start > e) {
+        result.push([s, e]);
+      } else {
+        start = Math.min(start, s);
+        end = Math.max(end, e);
+      }
+    }
+    if (!inserted) {
+      result.push([start, end]);
+    }
+    this.gapIntervals.set(gapIdx, result);
+  }
+
   resizeLevel(oldWidth, oldHeight, newWidth, newHeight) {
     if (!oldWidth || !oldHeight || oldWidth === 0 || oldHeight === 0) return;
 
     const scaleX = newWidth / oldWidth;
     const scaleY = newHeight / oldHeight;
 
-    // 1. Rescale all recorded grout strokes proportionally
+    // 1. Rescale all recorded grout strokes proportionally to preserve geometry
     this.strokes.forEach(stroke => {
       if (stroke.points) {
         stroke.points.forEach(p => {
@@ -106,18 +150,7 @@ export class GroutEngine {
       }
     });
 
-    // 2. Map filled sample points by gapIdx and normalized parameter t
-    const filledByGap = new Map();
-    this.samplePoints.forEach(pt => {
-      if (pt.filled) {
-        if (!filledByGap.has(pt.gapIdx)) {
-          filledByGap.set(pt.gapIdx, []);
-        }
-        filledByGap.get(pt.gapIdx).push(pt.t);
-      }
-    });
-
-    // 3. Re-generate gaps for new dimensions
+    // 2. Re-generate gaps for new dimensions
     this.gaps = this.currentLevel.generateGaps(newWidth, newHeight);
     this.samplePoints = [];
     this.filledPointsCount = 0;
@@ -128,12 +161,26 @@ export class GroutEngine {
       const dy = gap.y2 - gap.y1;
       const dist = Math.hypot(dx, dy);
       const steps = Math.max(Math.floor(dist / step), 1);
-      const filledTs = filledByGap.get(gapIdx) || [];
+      const intervals = this.gapIntervals.get(gapIdx) || [];
 
       for (let i = 0; i <= steps; i++) {
         const t = i / steps;
-        const tol = Math.max(1 / steps, 0.05);
-        const isFilled = filledTs.some(oldT => Math.abs(oldT - t) <= tol);
+        const ptStart = Math.max(0, (i - 0.5) / steps);
+        const ptEnd = Math.min(1, (i + 0.5) / steps);
+        const ptWidth = ptEnd - ptStart;
+
+        // Exact intersection calculation with canonical filled intervals on this gap
+        let overlap = 0;
+        for (const [s, e] of intervals) {
+          const interStart = Math.max(ptStart, s);
+          const interEnd = Math.min(ptEnd, e);
+          if (interEnd > interStart) {
+            overlap += (interEnd - interStart);
+          }
+        }
+
+        // A point is filled if at least 50% of its interval was covered
+        const isFilled = ptWidth > 0 && (overlap / ptWidth) >= 0.50;
 
         if (isFilled) {
           this.filledPointsCount++;
@@ -145,12 +192,14 @@ export class GroutEngine {
           radius: (gap.width || 24) * 0.6,
           filled: isFilled,
           gapIdx,
+          index: i,
+          totalSteps: steps,
           t
         });
       }
     });
 
-    // 4. Update progress callback with preserved coverage
+    // 3. Update progress callback with preserved coverage
     const total = this.samplePoints.length;
     const coverage = total > 0 ? (this.filledPointsCount / total) * 100 : 0;
     if (this.onProgress) {
@@ -168,6 +217,7 @@ export class GroutEngine {
     this.floatingTexts = [];
     this.combo = 0;
     this.tool = 'trowel';
+    this.gapIntervals = new Map();
     this.initLevel(level, true);
   }
 
@@ -178,6 +228,9 @@ export class GroutEngine {
 
     const step = 8;
     this.gaps.forEach((gap, gapIdx) => {
+      if (!this.gapIntervals.has(gapIdx)) {
+        this.gapIntervals.set(gapIdx, []);
+      }
       const dx = gap.x2 - gap.x1;
       const dy = gap.y2 - gap.y1;
       const dist = Math.hypot(dx, dy);
@@ -191,6 +244,8 @@ export class GroutEngine {
           radius: (gap.width || 24) * 0.6,
           filled: false,
           gapIdx,
+          index: i,
+          totalSteps: steps,
           t
         });
       }
@@ -398,6 +453,9 @@ export class GroutEngine {
           pt.filled = true;
           newlyFilled++;
           this.filledPointsCount++;
+          const ptStart = Math.max(0, (pt.index - 0.5) / pt.totalSteps);
+          const ptEnd = Math.min(1, (pt.index + 0.5) / pt.totalSteps);
+          this.addIntervalToGap(pt.gapIdx, ptStart, ptEnd);
         }
       }
     });
