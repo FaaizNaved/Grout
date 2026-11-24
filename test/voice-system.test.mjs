@@ -211,6 +211,14 @@ assert.equal(voiceTriggered, null, 'Combo 8 in same streak must not re-trigger')
 audio.triggerStreakReaction(0, 5);
 assert.equal(audio.lastStreakTriggeredCombo, 0, 'Streak reset must clear streak tracker');
 
+// Test Streak Reset While Muted
+console.log('Test 5B: Streak reset when combo drops to 0 while muted');
+audio.lastStreakTriggeredCombo = 5;
+audio.muted = true;
+audio.triggerStreakReaction(0, 5);
+assert.equal(audio.lastStreakTriggeredCombo, 0, 'Streak tracker must reset even when audio is muted');
+audio.muted = false;
+
 // New streak reaches 5: MUST trigger again
 audio.triggerStreakReaction(5, 5);
 assert.equal(voiceTriggered, 'laura_phir_agya_tu', 'New streak reaching 5x threshold must trigger again');

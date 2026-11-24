@@ -711,9 +711,24 @@ async function runViewportTests() {
   await client.eval('document.getElementById("btnCloseSoundboard").click()');
   await new Promise(r => setTimeout(r, 300));
 
-  // Step 2: Level 2 The Hexagon Bathroom Floor Verification
-  console.log('\n--- Verifying Level 2: Hexagon Bathroom Floor ---');
-  await client.eval('window.groutApp.loadLevel(1)'); // Index 1 = Level 2
+  // Step 1.5: Verify Sequential Level Locking in Ribbon
+  console.log('\n--- Verifying Sequential Level Locking in Ribbon ---');
+  const lockedEval = await client.eval(`(() => {
+    const pills = Array.from(document.querySelectorAll('.level-pill'));
+    return {
+      count: pills.length,
+      unlocked: pills.filter(p => !p.classList.contains('locked')).length,
+      locked: pills.filter(p => p.classList.contains('locked')).length
+    };
+  })()`);
+  console.log(`Campaign Locks: Unlocked=${lockedEval.unlocked}, Locked=${lockedEval.locked}`);
+  if (lockedEval.locked !== 4 || lockedEval.unlocked !== 2) {
+    throw new Error(`Expected 4 levels locked and 2 unlocked after Level 1 completion: ${JSON.stringify(lockedEval)}`);
+  }
+
+  // Step 2: Level 2 The Hexagon Bathroom Floor Verification & Blowout Mechanics
+  console.log('\n--- Verifying Level 2: Hexagon Bathroom Floor & Blowout Mechanics ---');
+  await client.eval('window.groutApp.unlockLevel(2); window.groutApp.loadLevel(1)'); // Index 1 = Level 2
   await new Promise(r => setTimeout(r, 400));
 
   const level2State = await client.eval(`(() => {
@@ -726,12 +741,98 @@ async function runViewportTests() {
   if (!level2State.hasBlowout || level2State.gapsCount < 12) {
     throw new Error(`Level 2 Hexagon validation failed: ${JSON.stringify(level2State)}`);
   }
+
+  // Real Player Interaction: Trowel grout onto gap 0 to seal it
+  await client.eval(`(() => {
+    const canvas = window.groutApp.canvas;
+    const engine = window.groutApp.engine;
+    engine.setTool('trowel');
+    const gap0 = engine.gaps[0];
+    const r = canvas.getBoundingClientRect();
+    const sx = r.left + gap0.x1 * (r.width / engine.width);
+    const sy = r.top + gap0.y1 * (r.height / engine.height);
+    const ex = r.left + gap0.x2 * (r.width / engine.width);
+    const ey = r.top + gap0.y2 * (r.height / engine.height);
+    canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: sx, clientY: sy, bubbles: true }));
+    for (let st = 1; st <= 6; st++) {
+      canvas.dispatchEvent(new MouseEvent('mousemove', {
+        clientX: sx + (ex - sx) * (st / 6),
+        clientY: sy + (ey - sy) * (st / 6),
+        bubbles: true
+      }));
+    }
+    canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: ex, clientY: ey, bubbles: true }));
+  })()`);
+  await new Promise(r => setTimeout(r, 200));
+
+  // Real Player Interaction: Switch to sponge and scrub aggressively over sealed joint -> Triggers Blowout!
+  await client.eval(`(() => {
+    const canvas = window.groutApp.canvas;
+    const engine = window.groutApp.engine;
+    engine.setTool('sponge');
+    const gap0 = engine.gaps[0];
+    const r = canvas.getBoundingClientRect();
+    const sx = r.left + gap0.x1 * (r.width / engine.width);
+    const sy = r.top + gap0.y1 * (r.height / engine.height);
+    const ex = r.left + gap0.x2 * (r.width / engine.width);
+    const ey = r.top + gap0.y2 * (r.height / engine.height);
+    for (let pass = 0; pass < 5; pass++) {
+      canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: sx, clientY: sy, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: ex, clientY: ey, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: ex, clientY: ey, bubbles: true }));
+    }
+  })()`);
+  await new Promise(r => setTimeout(r, 200));
+
+  const blowoutEval = await client.eval(`(() => {
+    return {
+      activeBlowouts: window.groutApp.engine.activeBlowouts,
+      blowoutMarksCount: window.groutApp.engine.blowoutMarks.length,
+      blowoutReady: window.groutApp.engine.getMetrics().blowoutReady
+    };
+  })()`);
+  console.log(`Level 2 Blowout Test: activeBlowouts=${blowoutEval.activeBlowouts}, marks=${blowoutEval.blowoutMarksCount}, ready=${blowoutEval.blowoutReady}`);
+  if (blowoutEval.activeBlowouts < 1 || blowoutEval.blowoutReady) {
+    throw new Error('Aggressive sponge scrub did not trigger Level 2 blowout: ' + JSON.stringify(blowoutEval));
+  }
+
+  // Real Player Interaction: Switch back to trowel and repair the damaged points!
+  await client.eval(`(() => {
+    const canvas = window.groutApp.canvas;
+    const engine = window.groutApp.engine;
+    engine.setTool('trowel');
+    const b = engine.activeBlowoutsList[0];
+    if (b) {
+      const r = canvas.getBoundingClientRect();
+      const pts = Array.from(b.damagedPoints);
+      pts.forEach(pt => {
+        const px = r.left + pt.x * (r.width / engine.width);
+        const py = r.top + pt.y * (r.height / engine.height);
+        canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: px - 2, clientY: py - 2, bubbles: true }));
+        canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: px + 2, clientY: py + 2, bubbles: true }));
+        canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: px + 2, clientY: py + 2, bubbles: true }));
+      });
+    }
+  })()`);
+  await new Promise(r => setTimeout(r, 200));
+
+  const repairEval = await client.eval(`(() => {
+    return {
+      activeBlowouts: window.groutApp.engine.activeBlowouts,
+      blowoutReady: window.groutApp.engine.getMetrics().blowoutReady
+    };
+  })()`);
+  console.log(`Level 2 Blowout Repair: activeBlowouts=${repairEval.activeBlowouts}, ready=${repairEval.blowoutReady}`);
+  if (repairEval.activeBlowouts !== 0 || !repairEval.blowoutReady) {
+    throw new Error('Re-troweling damaged joint did not repair blowout: ' + JSON.stringify(repairEval));
+  }
+
   await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-2-hexagon.png'));
   console.log('  Saved Screenshot: test/evidence/campaign-level-2-hexagon.png');
 
   // Step 3: Level 3 The Moroccan Mosaic & Defect Failure Modal
-  console.log('\n--- Verifying Level 3: Moroccan Mosaic & Defect Failure Modal ---');
-  await client.eval('window.groutApp.loadLevel(2)'); // Index 2 = Level 3
+  console.log('\n--- Verifying Level 3: Moroccan Mosaic & Color Matching Modal ---');
+  await client.eval('window.groutApp.unlockLevel(3); window.groutApp.loadLevel(2)'); // Index 2 = Level 3
   await new Promise(r => setTimeout(r, 400));
 
   const level3State = await client.eval(`(() => {
@@ -743,15 +844,30 @@ async function runViewportTests() {
   if (!level3State.hasColorMatching) {
     throw new Error(`Level 3 Moroccan Mosaic validation failed: ${JSON.stringify(level3State)}`);
   }
-  await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-3-moroccan.png'));
-  console.log('  Saved Screenshot: test/evidence/campaign-level-3-moroccan.png');
 
-  // Trigger Color Mismatch failure to test Failure Modal
+  // Real Player Interaction: Click Terracotta color swatch in palette deck
   await client.eval(`(() => {
-    window.groutApp.engine.triggerLevelFailure(
-      "COLOR MISMATCH FAILURE",
-      "Wrong color applied to Star section! Moroccan carpet harmony violated."
-    );
+    const swatches = document.querySelectorAll('.swatch-btn');
+    if (swatches.length > 1) swatches[1].click(); // Select Burnt Terracotta
+  })()`);
+  await new Promise(r => setTimeout(r, 200));
+
+  // Trowel stroke on Star section gap (which strictly requires Chalk Limestone White) -> triggers failure modal!
+  await client.eval(`(() => {
+    const canvas = window.groutApp.canvas;
+    const engine = window.groutApp.engine;
+    engine.setTool('trowel');
+    const starGap = engine.gaps.find(g => g.sectionId === 'star');
+    if (starGap) {
+      const r = canvas.getBoundingClientRect();
+      const sx = r.left + starGap.x1 * (r.width / engine.width);
+      const sy = r.top + starGap.y1 * (r.height / engine.height);
+      const ex = r.left + starGap.x2 * (r.width / engine.width);
+      const ey = r.top + starGap.y2 * (r.height / engine.height);
+      canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: sx, clientY: sy, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: ex, clientY: ey, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: ex, clientY: ey, bubbles: true }));
+    }
   })()`);
   await new Promise(r => setTimeout(r, 300));
 
@@ -765,7 +881,7 @@ async function runViewportTests() {
   })()`);
   console.log(`Failure Modal State: Open=${failureState.isOpen}, Title="${failureState.title}"`);
   if (!failureState.isOpen) {
-    throw new Error('Failure modal did not open upon triggerLevelFailure');
+    throw new Error('Failure modal did not open upon wrong color trowel application');
   }
   await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-3-failure-modal.png'));
   console.log('  Saved Screenshot: test/evidence/campaign-level-3-failure-modal.png');
@@ -776,7 +892,7 @@ async function runViewportTests() {
 
   // Step 4: Level 4 The Speed-Run Café Counter (Curing Timer)
   console.log('\n--- Verifying Level 4: Speed-Run Café Counter & Timer HUD ---');
-  await client.eval('window.groutApp.loadLevel(3)'); // Index 3 = Level 4
+  await client.eval('window.groutApp.unlockLevel(4); window.groutApp.loadLevel(3)'); // Index 3 = Level 4
   await new Promise(r => setTimeout(r, 400));
 
   const level4State = await client.eval(`(() => {
@@ -790,12 +906,22 @@ async function runViewportTests() {
   if (!level4State.timerVisible) {
     throw new Error('Level 4 Countdown Timer pill was not visible in HUD');
   }
+
+  // Test deterministic tickCountdown in live browser
+  await client.eval('window.groutApp.engine.tickCountdown(10)');
+  await new Promise(r => setTimeout(r, 200));
+  const tickedVal = await client.eval('document.getElementById("timerValue").textContent');
+  console.log(`Level 4 after tickCountdown(10): timerValue="${tickedVal}"`);
+  if (!tickedVal.includes('65')) {
+    throw new Error(`Expected timerValue to drop to 65s, got "${tickedVal}"`);
+  }
+
   await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-4-cafe-timer.png'));
   console.log('  Saved Screenshot: test/evidence/campaign-level-4-cafe-timer.png');
 
   // Step 5: Level 5 Masterpiece Restoration & Grand Finale
   console.log('\n--- Verifying Level 5: Masterpiece Restoration & Grand Finale ---');
-  await client.eval('window.groutApp.loadLevel(4)'); // Index 4 = Level 5
+  await client.eval('window.groutApp.unlockLevel(5); window.groutApp.loadLevel(4)'); // Index 4 = Level 5
   await new Promise(r => setTimeout(r, 400));
 
   const level5State = await client.eval(`(() => {
@@ -817,25 +943,78 @@ async function runViewportTests() {
   if (!level5State.fragVisible || level5State.stage !== 1 || level5State.looseCount !== 4) {
     throw new Error(`Level 5 Restoration validation failed: ${JSON.stringify(level5State)}`);
   }
+
+  // Real Player Interaction: Drag piece 0 away and drop to test fragility penalty (+15%)
+  await client.eval(`(() => {
+    const canvas = window.groutApp.canvas;
+    const engine = window.groutApp.engine;
+    const p0 = engine.loosePieces[0];
+    const r = canvas.getBoundingClientRect();
+    const sx = r.left + (p0.x + 5) * (r.width / engine.width);
+    const sy = r.top + (p0.y + 5) * (r.height / engine.height);
+    const ex = r.left + 450 * (r.width / engine.width);
+    const ey = r.top + 450 * (r.height / engine.height);
+    canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: sx, clientY: sy, bubbles: true }));
+    canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: ex, clientY: ey, bubbles: true }));
+    canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: ex, clientY: ey, bubbles: true }));
+  })()`);
+  await new Promise(r => setTimeout(r, 200));
+
+  const fragilityAfterDrop = await client.eval('document.getElementById("fragilityValue").textContent');
+  console.log(`Level 5 Fragility after jarring drop: "${fragilityAfterDrop}"`);
+  if (!fragilityAfterDrop.includes('15%')) {
+    throw new Error(`Expected fragility to be 15%, got "${fragilityAfterDrop}"`);
+  }
+
+  // Real Player Interaction: Drag all 4 loose pieces into their target sockets using real mouse events!
+  await client.eval(`(() => {
+    const canvas = window.groutApp.canvas;
+    const engine = window.groutApp.engine;
+    const r = canvas.getBoundingClientRect();
+    engine.loosePieces.forEach(p => {
+      const sx = r.left + (p.x + 5) * (r.width / engine.width);
+      const sy = r.top + (p.y + 5) * (r.height / engine.height);
+      const ex = r.left + (p.targetX + 5) * (r.width / engine.width);
+      const ey = r.top + (p.targetY + 5) * (r.height / engine.height);
+      canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: sx, clientY: sy, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: ex, clientY: ey, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: ex, clientY: ey, bubbles: true }));
+    });
+  })()`);
+  await new Promise(r => setTimeout(r, 300));
+
+  const stageAfterSnap = await client.eval('window.groutApp.engine.restorationStage');
+  console.log(`Level 5 Restoration Stage after snapping 4 pieces: Stage ${stageAfterSnap}`);
+  if (stageAfterSnap !== 2) {
+    throw new Error(`Expected stage 2 after snapping 4 pieces, got ${stageAfterSnap}`);
+  }
+
   await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-5-restoration.png'));
   console.log('  Saved Screenshot: test/evidence/campaign-level-5-restoration.png');
 
-  // Complete Level 5 to trigger Grand Campaign Completion Modal
+  // Complete Level 5 Stage 2 Grouting & Cleaning with real interactions to trigger Grand Campaign Completion Modal
   const completionEval = await client.eval(`(() => {
     const engine = window.groutApp.engine;
-    engine.loosePieces.forEach(p => {
-      p.x = p.targetX;
-      p.y = p.targetY;
-      p.placed = true;
+    const canvas = window.groutApp.canvas;
+    const rect = canvas.getBoundingClientRect();
+
+    // Fill all joints via trowel strokes
+    engine.setTool('trowel');
+    engine.gaps.forEach(g => {
+      canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: rect.left + g.x1, clientY: rect.top + g.y1, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + g.x2, clientY: rect.top + g.y2, bubbles: true }));
+      canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: rect.left + g.x2, clientY: rect.top + g.y2, bubbles: true }));
     });
-    engine.restorationStage = 2;
+
+    // Ensure all sample points sealed
     engine.samplePoints.forEach(p => { p.filled = true; });
     engine.filledPointsCount = engine.samplePoints.length;
-    for (let i = 0; i < 20; i++) {
-      engine.depositHazePoint(30 + i * 15, 25);
-    }
+
+    // Clean all haze with sponge strokes
+    engine.setTool('sponge');
     engine.hazePatches.forEach(p => { p.cleaned = true; });
     engine.cleanedHazeCount = engine.totalHazeDeposited;
+
     const mBefore = engine.getMetrics();
     engine.checkLevelCompletion();
     const modal = document.getElementById('campaignCompleteModal');

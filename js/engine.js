@@ -55,6 +55,8 @@ export class GroutEngine {
 
     // Level-specific mechanics state
     this.activeBlowouts = 0;
+    this.blowoutCounter = 0;
+    this.activeBlowoutsList = [];
 
     // Level 4 Curing & Countdown Timer
     this.timeRemaining = 75;
@@ -297,34 +299,14 @@ export class GroutEngine {
 
     // Reset level-specific mechanics
     this.activeBlowouts = 0;
+    this.blowoutCounter = 0;
+    this.activeBlowoutsList = [];
     this.timeRemaining = level.overallDeadlineSec || 75;
     if (this.countdownTimer) clearInterval(this.countdownTimer);
 
     if (level.hasCuringTimer) {
       this.countdownTimer = setInterval(() => {
-        if (this.isCompleted || this.isFailed) {
-          clearInterval(this.countdownTimer);
-          return;
-        }
-        this.timeRemaining--;
-        if (this.onTimerTick) {
-          this.onTimerTick(this.timeRemaining);
-        }
-        if (this.timeRemaining <= 0) {
-          clearInterval(this.countdownTimer);
-          const metrics = this.getMetrics();
-          if (metrics.hazeCleaning < 50) {
-            this.triggerLevelFailure(
-              "CAFE SHUTDOWN: MESS ABOVE 50%",
-              "Remaining mess above 50%! Barista counter covered in hardened grout."
-            );
-          } else {
-            this.triggerLevelFailure(
-              "DEADLINE EXPIRED",
-              "Opening health inspection arrived before the café counter was fully sealed!"
-            );
-          }
-        }
+        this.tickCountdown(1);
       }, 1000);
     }
 
@@ -397,6 +379,32 @@ export class GroutEngine {
     }
   }
 
+  tickCountdown(dt = 1) {
+    if (this.isCompleted || this.isFailed) {
+      if (this.countdownTimer) clearInterval(this.countdownTimer);
+      return;
+    }
+    this.timeRemaining = Math.max(0, this.timeRemaining - dt);
+    if (this.onTimerTick) {
+      this.onTimerTick(this.timeRemaining);
+    }
+    if (this.timeRemaining <= 0) {
+      if (this.countdownTimer) clearInterval(this.countdownTimer);
+      const metrics = this.getMetrics();
+      if (metrics.hazeCleaning < 50) {
+        this.triggerLevelFailure(
+          "CAFE SHUTDOWN: MESS ABOVE 50%",
+          "Remaining mess above 50%! Barista counter covered in hardened grout."
+        );
+      } else {
+        this.triggerLevelFailure(
+          "DEADLINE EXPIRED",
+          "Opening health inspection arrived before the café counter was fully sealed!"
+        );
+      }
+    }
+  }
+
   setGroutColor(color, border) {
     this.groutColor = color;
     this.groutBorder = border || color;
@@ -411,9 +419,11 @@ export class GroutEngine {
     const clientY = touch ? touch.clientY : (e.clientY !== undefined ? e.clientY : 0);
     const scaleX = rect.width && this.width ? this.width / rect.width : 1;
     const scaleY = rect.height && this.height ? this.height / rect.height : 1;
+    const time = (e && e.timeStamp) ? e.timeStamp : performance.now();
     return {
       x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
+      y: (clientY - rect.top) * scaleY,
+      time
     };
   }
 
@@ -585,31 +595,55 @@ export class GroutEngine {
   }
 
   triggerBlowout(x, y, gapIdx) {
-    this.activeBlowouts++;
+    this.blowoutCounter = (this.blowoutCounter || 0) + 1;
+    const blowoutId = this.blowoutCounter;
     audio.playErrorTone();
     this.addFloatingText("⚠️ GROUT BLOWOUT! (-10% Progress)", x, y - 20);
 
     // Penalize 10% of total filled points around this location
     const penaltyCount = Math.max(1, Math.round(this.samplePoints.length * 0.10));
-    let unsealed = 0;
+    const damagedPoints = new Set();
 
-    for (const pt of this.samplePoints) {
-      if (pt.filled && unsealed < penaltyCount) {
-        const dSq = (pt.x - x) * (pt.x - x) + (pt.y - y) * (pt.y - y);
-        if (dSq < 65 * 65) {
-          pt.filled = false;
-          unsealed++;
-          this.filledPointsCount = Math.max(0, this.filledPointsCount - 1);
-        }
+    // Prioritize points on the affected gap, then nearby points
+    const candidates = this.samplePoints
+      .filter(pt => pt.filled)
+      .map(pt => ({
+        pt,
+        dSq: (pt.x - x) * (pt.x - x) + (pt.y - y) * (pt.y - y),
+        sameGap: gapIdx !== undefined && pt.gapIdx === gapIdx
+      }))
+      .sort((a, b) => {
+        if (a.sameGap !== b.sameGap) return a.sameGap ? -1 : 1;
+        return a.dSq - b.dSq;
+      });
+
+    for (const item of candidates) {
+      if (damagedPoints.size >= penaltyCount) break;
+      if (item.dSq < 80 * 80 || item.sameGap) {
+        item.pt.filled = false;
+        item.pt.blowoutId = blowoutId;
+        damagedPoints.add(item.pt);
+        this.filledPointsCount = Math.max(0, this.filledPointsCount - 1);
       }
     }
 
-    if (this.gapIntervals.has(gapIdx)) {
-      this.rebuildGapIntervals(gapIdx);
-    }
+    if (damagedPoints.size > 0) {
+      if (!this.activeBlowoutsList) this.activeBlowoutsList = [];
+      this.activeBlowoutsList.push({
+        id: blowoutId,
+        gapIdx,
+        x,
+        y,
+        damagedPoints
+      });
+      this.activeBlowouts = this.activeBlowoutsList.length;
 
-    this.blowoutMarks.push({ x, y, radius: 20, color: '#DC2626', alpha: 0.90 });
-    this.notifyProgress();
+      if (gapIdx !== undefined && this.gapIntervals.has(gapIdx)) {
+        this.rebuildGapIntervals(gapIdx);
+      }
+      this.blowoutMarks.push({ id: blowoutId, x, y, radius: 20, color: '#DC2626', alpha: 0.90 });
+      this.notifyProgress();
+    }
   }
 
   spawnSquelchParticles(x, y) {
@@ -797,6 +831,10 @@ export class GroutEngine {
     this.cleanedHazeCount = 0;
     this.hasTriggeredFirstGroutMeme = false;
     this.hasTriggeredCleanMeme = false;
+    this.activeBlowouts = 0;
+    this.blowoutCounter = 0;
+    this.activeBlowoutsList = [];
+    this.blowoutMarks = [];
 
     this.initLevel(this.currentLevel, false);
     this.notifyProgress();
@@ -831,7 +869,7 @@ export class GroutEngine {
   isInsideAnyJoint(px, py) {
     if (!this.gaps || this.gaps.length === 0) return false;
     for (const gap of this.gaps) {
-      const jointHalfWidth = (gap.width || 24) * 0.45;
+      const jointHalfWidth = (gap.width || 24) * 0.48;
       const dSq = this.distToSegmentSq(px, py, gap.x1, gap.y1, gap.x2, gap.y2);
       if (dSq < jointHalfWidth * jointHalfWidth) {
         return true;
@@ -904,16 +942,21 @@ export class GroutEngine {
       const ny = gdx / glen;
       const halfW = (nearestGap.width || 24) * 0.5;
 
+      const l2 = gdx * gdx + gdy * gdy;
+      const t = Math.max(0, Math.min(1, ((cx - nearestGap.x1) * gdx + (cy - nearestGap.y1) * gdy) / l2));
+      const anchorX = nearestGap.x1 + t * gdx;
+      const anchorY = nearestGap.y1 + t * gdy;
+
       const offsets = [
-        { mult: 1, dist: halfW + 6 + Math.random() * 8, tang: -8 + Math.random() * 16 },
-        { mult: -1, dist: halfW + 6 + Math.random() * 8, tang: -8 + Math.random() * 16 },
-        { mult: 1, dist: halfW + 12 + Math.random() * 10, tang: -12 + Math.random() * 24 },
-        { mult: -1, dist: halfW + 12 + Math.random() * 10, tang: -12 + Math.random() * 24 }
+        { mult: 1, dist: halfW + 8 + Math.random() * 8, tang: -8 + Math.random() * 16 },
+        { mult: -1, dist: halfW + 8 + Math.random() * 8, tang: -8 + Math.random() * 16 },
+        { mult: 1, dist: halfW + 14 + Math.random() * 10, tang: -12 + Math.random() * 24 },
+        { mult: -1, dist: halfW + 14 + Math.random() * 10, tang: -12 + Math.random() * 24 }
       ];
 
       for (const off of offsets) {
-        const hx = cx + (gdx / glen) * off.tang + nx * (off.mult * off.dist);
-        const hy = cy + (gdy / glen) * off.tang + ny * (off.mult * off.dist);
+        const hx = anchorX + (gdx / glen) * off.tang + nx * (off.mult * off.dist);
+        const hy = anchorY + (gdy / glen) * off.tang + ny * (off.mult * off.dist);
         if (this.depositHazePoint(hx, hy)) {
           anyChanged = true;
         }
@@ -929,9 +972,6 @@ export class GroutEngine {
     if (dist < 4) return false;
 
     let anyChanged = false;
-    const nx = -dy / dist;
-    const ny = dx / dist;
-
     const steps = Math.max(1, Math.floor(dist / 16));
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
@@ -951,15 +991,32 @@ export class GroutEngine {
           nearestGap = gap;
         }
       }
+
+      let gapNx = -(p2.y - p1.y) / dist;
+      let gapNy = (p2.x - p1.x) / dist;
+      let anchorX = px;
+      let anchorY = py;
+
+      if (nearestGap) {
+        const gdx = nearestGap.x2 - nearestGap.x1;
+        const gdy = nearestGap.y2 - nearestGap.y1;
+        const glen = Math.hypot(gdx, gdy) || 1;
+        gapNx = -gdy / glen;
+        gapNy = gdx / glen;
+        const l2 = gdx * gdx + gdy * gdy;
+        const u = Math.max(0, Math.min(1, ((px - nearestGap.x1) * gdx + (py - nearestGap.y1) * gdy) / l2));
+        anchorX = nearestGap.x1 + u * gdx;
+        anchorY = nearestGap.y1 + u * gdy;
+      }
+
       const halfW = nearestGap ? (nearestGap.width || 24) * 0.5 : 12;
+      const offsetDist1 = halfW + 8 + Math.random() * 10;
+      const offsetDist2 = halfW + 8 + Math.random() * 10;
 
-      const offsetDist1 = halfW + 6 + Math.random() * 10;
-      const offsetDist2 = halfW + 6 + Math.random() * 10;
-
-      if (this.depositHazePoint(px + nx * offsetDist1, py + ny * offsetDist1)) {
+      if (this.depositHazePoint(anchorX + gapNx * offsetDist1, anchorY + gapNy * offsetDist1)) {
         anyChanged = true;
       }
-      if (this.depositHazePoint(px - nx * offsetDist2, py - ny * offsetDist2)) {
+      if (this.depositHazePoint(anchorX - gapNx * offsetDist2, anchorY - gapNy * offsetDist2)) {
         anyChanged = true;
       }
     }
@@ -1024,20 +1081,20 @@ export class GroutEngine {
             hazeChanged = true;
           }
 
-          // If this area was a blowout, sealing it clears blowout counter
-          if (this.activeBlowouts > 0 && Math.random() < 0.20) {
-            this.activeBlowouts = Math.max(0, this.activeBlowouts - 1);
-            this.addFloatingText("BLOWOUT RE-SEALED! 🧱", pt.x, pt.y - 15);
-          }
-        } else {
-          // LEVEL 2 BLOWOUT MECHANIC: Violent scrubbing on already filled joint
-          if (this.currentLevel && this.currentLevel.hasBlowoutMechanic && hasSegment) {
-            const speed = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-            if (speed > 16) {
-              pt.scrubHeat = (pt.scrubHeat || 0) + 1;
-              if (pt.scrubHeat >= 6) {
-                pt.scrubHeat = 0;
-                this.triggerBlowout(pt.x, pt.y, pt.gapIdx);
+          // Deterministic blowout repair: clear active blowout if its damaged points are re-filled
+          if (this.activeBlowoutsList && this.activeBlowoutsList.length > 0) {
+            for (let bIdx = this.activeBlowoutsList.length - 1; bIdx >= 0; bIdx--) {
+              const b = this.activeBlowoutsList[bIdx];
+              if (b.damagedPoints.has(pt)) {
+                b.damagedPoints.delete(pt);
+                if (b.damagedPoints.size === 0) {
+                  this.activeBlowoutsList.splice(bIdx, 1);
+                  this.activeBlowouts = this.activeBlowoutsList.length;
+                  this.blowoutMarks = this.blowoutMarks.filter(m => m.id !== b.id);
+                  audio.playScrape();
+                  audio.playChime(4);
+                  this.addFloatingText("BLOWOUT REPAIRED! 🧱", b.x, b.y - 15);
+                }
               }
             }
           }
@@ -1058,11 +1115,6 @@ export class GroutEngine {
     }
 
     if (newlyFilled > 0) {
-      if (!this.hasTriggeredFirstGroutMeme) {
-        this.hasTriggeredFirstGroutMeme = true;
-        audio.triggerMemeSound('intro_grout_bhar_denge');
-      }
-
       this.combo++;
       if (this.comboTimer) clearTimeout(this.comboTimer);
       this.comboTimer = setTimeout(() => {
@@ -1091,13 +1143,42 @@ export class GroutEngine {
   checkSpongeCleaning(p1, p2) {
     if (this.isCompleted || this.isFailed) return;
     if (this.currentLevel && this.currentLevel.hasRestorationPuzzle && this.restorationStage === 1) return;
-    if (this.totalHazeDeposited === 0) return;
 
-    let newlyCleaned = 0;
     const spongeRadius = 36;
     const spongeRadiusSq = spongeRadius * spongeRadius;
     const hasSegment = p1 && (p1.x !== p2.x || p1.y !== p2.y);
     const now = performance.now();
+
+    // LEVEL 2 BLOWOUT MECHANIC: Aggressive sponge scrubbing over already-sealed joints
+    if (this.currentLevel && this.currentLevel.hasBlowoutMechanic && hasSegment) {
+      const dt = (p2.time && p1.time) ? Math.max(1, p2.time - p1.time) : 16;
+      const strokeDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const speed = strokeDist / dt; // px/ms
+
+      if (speed >= 0.80) {
+        this.gaps.forEach((gap, gapIdx) => {
+          const filledInGap = this.samplePoints.filter(pt => pt.gapIdx === gapIdx && pt.filled);
+          if (filledInGap.length >= 3) {
+            const nearFilled = filledInGap.find(pt => this.distToSegmentSq(pt.x, pt.y, p1.x, p1.y, p2.x, p2.y) <= spongeRadiusSq);
+            if (nearFilled) {
+              if (gap.lastScrubTime && (now - gap.lastScrubTime > 700)) {
+                gap.scrubHeat = Math.max(0, (gap.scrubHeat || 0) - 20);
+              }
+              gap.lastScrubTime = now;
+              gap.scrubHeat = (gap.scrubHeat || 0) + strokeDist;
+              if (gap.scrubHeat >= 50) {
+                gap.scrubHeat = 0;
+                this.triggerBlowout(nearFilled.x, nearFilled.y, gapIdx);
+              }
+            }
+          }
+        });
+      }
+    }
+
+    if (this.totalHazeDeposited === 0) return;
+
+    let newlyCleaned = 0;
 
     for (let i = 0; i < this.hazePatches.length; i++) {
       const patch = this.hazePatches[i];

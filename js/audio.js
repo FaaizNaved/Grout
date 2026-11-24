@@ -526,13 +526,13 @@ class AudioManager {
   // -------------------------------------------------------------
 
   triggerStreakReaction(combo, threshold = 5) {
-    if (this.muted) return;
-
-    // Reset streak trigger when combo drops to 0
+    // Reset streak trigger when combo drops to 0 (must happen even if muted)
     if (combo === 0) {
       this.lastStreakTriggeredCombo = 0;
       return;
     }
+
+    if (this.muted) return;
 
     // Play at most once per streak when crossing threshold
     if (combo >= threshold && this.lastStreakTriggeredCombo < threshold) {

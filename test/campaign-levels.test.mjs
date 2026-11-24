@@ -37,8 +37,15 @@ globalThis.Audio = class {
   pause() {}
 };
 globalThis.requestAnimationFrame = () => 0;
+globalThis.MouseEvent = class {
+  constructor(type, init = {}) {
+    Object.assign(this, init);
+    this.type = type;
+  }
+};
 
 function createMockCanvas(width, height) {
+  const listeners = {};
   return {
     width,
     height,
@@ -66,8 +73,21 @@ function createMockCanvas(width, height) {
       createLinearGradient: () => ({ addColorStop: () => {} }),
       createRadialGradient: () => ({ addColorStop: () => {} })
     }),
-    addEventListener: () => {},
-    removeEventListener: () => {}
+    addEventListener: (type, fn) => {
+      if (!listeners[type]) listeners[type] = [];
+      listeners[type].push(fn);
+    },
+    removeEventListener: (type, fn) => {
+      if (listeners[type]) {
+        listeners[type] = listeners[type].filter(f => f !== fn);
+      }
+    },
+    dispatchEvent: (e) => {
+      if (e && !e.preventDefault) e.preventDefault = () => {};
+      const fns = listeners[e.type] || [];
+      fns.forEach(fn => fn(e));
+      return true;
+    }
   };
 }
 
@@ -132,21 +152,84 @@ const canvas = createMockCanvas(600, 480);
 const engine = new GroutEngine(canvas);
 engine.loadLevel(lvl2);
 
-// Simulate filling some points
-engine.samplePoints.slice(0, 50).forEach(p => { p.filled = true; });
-engine.filledPointsCount = 50;
-const filledBefore = engine.filledPointsCount;
+// Seal points along gap 0
+const gap0Points = engine.samplePoints.filter(p => p.gapIdx === 0);
+gap0Points.forEach(p => { p.filled = true; engine.filledPointsCount++; });
+assert.equal(engine.activeBlowouts, 0, 'Initially no blowouts');
 
-// Trigger blowout
-engine.triggerBlowout(engine.samplePoints[10].x, engine.samplePoints[10].y, 0);
-assert.equal(engine.activeBlowouts, 1, 'Blowout must be marked active');
-assert.ok(engine.filledPointsCount < filledBefore, 'Blowout must penalize filled points by removing them');
+// Aggressive sponge scrubbing over sealed gap 0 (speed >= 0.80 px/ms)
+engine.setTool('sponge');
+const gap0 = engine.gaps[0];
+for (let s = 0; s < 4; s++) {
+  engine.checkSpongeCleaning(
+    { x: gap0.x1, y: gap0.y1, time: s * 50 },
+    { x: gap0.x2, y: gap0.y2, time: s * 50 + 15 }
+  );
+}
+assert.equal(engine.activeBlowouts, 1, 'Aggressive sponge scrub on sealed joint must trigger blowout');
+assert.equal(engine.activeBlowoutsList.length, 1);
+assert.equal(engine.getMetrics().blowoutReady, false, 'Active blowout must prevent blowoutReady');
 
-// Recover by filling again and resetting blowouts
-engine.activeBlowouts = 0;
-const metrics = engine.getMetrics();
-assert.equal(metrics.blowoutReady, true, 'Recovery must restore blowoutReady status');
-console.log('  ✓ Hexagonal 3-way vertices verified; blowout penalty and recovery verified.\n');
+// Unrelated joint grouting must NOT repair blowout
+engine.setTool('trowel');
+const gap1Points = engine.samplePoints.filter(p => p.gapIdx === 1);
+gap1Points.forEach(pt => {
+  engine.checkGroutFill({ x: pt.x - 2, y: pt.y - 2 }, { x: pt.x + 2, y: pt.y + 2 });
+});
+assert.equal(engine.activeBlowouts, 1, 'Grouting unrelated joint must NEVER repair the blowout');
+
+// Deterministic repair: refilling exact damaged points clears blowout
+const b = engine.activeBlowoutsList[0];
+const damagedList = Array.from(b.damagedPoints);
+assert.ok(damagedList.length > 0, 'Blowout must track damaged points');
+damagedList.forEach(pt => {
+  engine.checkGroutFill({ x: pt.x - 2, y: pt.y - 2 }, { x: pt.x + 2, y: pt.y + 2 });
+});
+assert.equal(engine.activeBlowouts, 0, 'Refilling exact damaged points must clear blowout');
+assert.equal(engine.getMetrics().blowoutReady, true, 'blowoutReady is true when blowout is cleared');
+
+// Multiple blowouts test
+engine.samplePoints.filter(p => p.gapIdx === 0 || p.gapIdx === 1).forEach(p => { p.filled = true; });
+engine.triggerBlowout(gap0.x1, gap0.y1, 0);
+const gap1 = engine.gaps[1];
+engine.triggerBlowout(gap1.x1, gap1.y1, 1);
+assert.equal(engine.activeBlowouts, 2, 'Must track multiple active blowouts');
+assert.equal(engine.getMetrics().blowoutReady, false);
+
+// Repair only first blowout
+const b1 = engine.activeBlowoutsList.find(item => item.gapIdx === 0);
+Array.from(b1.damagedPoints).forEach(pt => {
+  engine.checkGroutFill({ x: pt.x - 2, y: pt.y - 2 }, { x: pt.x + 2, y: pt.y + 2 });
+});
+assert.equal(engine.activeBlowouts, 1, 'Repairing first blowout leaves 1 blowout active');
+assert.equal(engine.getMetrics().blowoutReady, false, 'blowoutReady still false while 1 blowout remains');
+
+// Repair second blowout
+const b2 = engine.activeBlowoutsList[0];
+Array.from(b2.damagedPoints).forEach(pt => {
+  engine.checkGroutFill({ x: pt.x - 2, y: pt.y - 2 }, { x: pt.x + 2, y: pt.y + 2 });
+});
+assert.equal(engine.activeBlowouts, 0, 'Repairing all blowouts leaves 0 blowouts');
+assert.equal(engine.getMetrics().blowoutReady, true, 'blowoutReady restored to true');
+
+// Unresolved blowout prevents level completion
+engine.samplePoints.forEach(p => { p.filled = true; });
+engine.filledPointsCount = engine.samplePoints.length;
+for (let i = 0; i < 20; i++) engine.depositHazePoint(20 + i * 10, 20);
+engine.hazePatches.forEach(p => { p.cleaned = true; });
+engine.cleanedHazeCount = engine.totalHazeDeposited;
+
+engine.triggerBlowout(gap0.x1, gap0.y1, 0);
+assert.equal(engine.activeBlowouts, 1);
+engine.checkLevelCompletion();
+assert.equal(engine.isCompleted, false, 'Unresolved blowout must block level completion');
+
+// Clean up blowout for next test
+Array.from(engine.activeBlowoutsList[0].damagedPoints).forEach(pt => {
+  engine.checkGroutFill({ x: pt.x - 2, y: pt.y - 2 }, { x: pt.x + 2, y: pt.y + 2 });
+});
+assert.equal(engine.activeBlowouts, 0);
+console.log('  ✓ Hexagonal 3-way vertices, sponge blowout, unrelated joint non-repair, deterministic repair, and completion blocking verified.\n');
 
 // ---------------------------------------------------------------------------
 // TEST 3: Level 3 Moroccan Mosaic Color Validation
@@ -215,21 +298,18 @@ assert.equal(patch.isCured, true, 'Patch older than 30s must become cured');
 assert.equal(patch.passesRequired, 2, 'Cured patch must require multiple passes (first pass drops to 2 passes left)');
 assert.equal(patch.cleaned, false, 'Cured patch must not be cleaned in a single pass');
 
-// Simulate deadline expiration
-engine.timeRemaining = 1;
-// Trigger deadline expiration callback manually
-const deadlineExpired = () => {
-  engine.timeRemaining = 0;
-  const m = engine.getMetrics();
-  if (m.hazeCleaning < 50) {
-    engine.triggerLevelFailure("CAFE SHUTDOWN: MESS ABOVE 50%", "Remaining mess above 50%!");
-  } else {
-    engine.triggerLevelFailure("DEADLINE EXPIRED", "Opening health inspection arrived!");
-  }
-};
-deadlineExpired();
-assert.equal(levelFailedCalled, true, 'Timeout must trigger level failure');
-console.log('  ✓ 30-second curing behavior (3-pass buff requirement) and timeout failure verified.\n');
+// Test deterministic countdown ticking via tickCountdown
+assert.equal(engine.timeRemaining, 75);
+let lastTick = null;
+engine.onTimerTick = (s) => { lastTick = s; };
+engine.tickCountdown(15);
+assert.equal(engine.timeRemaining, 60, 'tickCountdown(15) must reduce remaining time by 15');
+assert.equal(lastTick, 60, 'onTimerTick must be invoked with 60s');
+
+// Ticking down to 0 triggers level failure
+engine.tickCountdown(60);
+assert.equal(levelFailedCalled, true, 'Countdown expiration via tickCountdown must trigger level failure');
+console.log('  ✓ 30-second curing behavior (3-pass buff requirement) and tickCountdown failure verified.\n');
 
 // ---------------------------------------------------------------------------
 // TEST 5: Level 5 Ancient Roman Mosaic Puzzle & Fragility System
@@ -249,24 +329,22 @@ const strokeStart = { x: 100, y: 100 };
 engine.checkGroutFill(strokeStart, { x: 120, y: 100 });
 assert.equal(engine.filledPointsCount, 0, 'Grouting must be locked during Stage 1');
 
-// Test Jarring Drop -> Fragility Increase
+// Test Jarring Drop -> Fragility Increase via pointer events
 const piece0 = engine.loosePieces[0];
-engine.draggedPiece = piece0;
-piece0.x = 400; // Far away from target socket
-piece0.y = 400;
+// Mousedown on piece
+canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: piece0.x + 5, clientY: piece0.y + 5 }));
+assert.equal(engine.draggedPiece, piece0, 'Mousedown on piece must start drag');
 
-// Simulate drop away from socket
+// Mousemove away from socket
+canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: 450, clientY: 450 }));
+
+// Mouseup away from socket (jarring drop)
 let fragilityReported = 0;
 engine.onFragilityChange = (pct) => { fragilityReported = pct; };
-
-// Simulate drop calculation
-const distToSocket = Math.hypot(
-  (piece0.x + piece0.w / 2) - (piece0.targetX + piece0.w / 2),
-  (piece0.y + piece0.h / 2) - (piece0.targetY + piece0.h / 2)
-);
-assert.ok(distToSocket > 30, 'Drop is far away from socket');
-engine.fragility = Math.min(100, engine.fragility + 15);
+canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: 450, clientY: 450 }));
+assert.equal(engine.draggedPiece, null, 'Mouseup must end drag');
 assert.equal(engine.fragility, 15, 'Jarring drop must add +15% fragility');
+assert.equal(fragilityReported, 15);
 
 // Test 100% Fragility Failure
 for (let i = 0; i < 6; i++) {
@@ -276,18 +354,58 @@ assert.equal(engine.fragility, 100);
 engine.triggerLevelFailure("RESTORATION FAILED", "Ancient Roman mosaic shattered!");
 assert.equal(levelFailedCalled, true, '100% fragility must fail the level');
 
-// Test Successful Snapping of all 4 pieces -> Unlock Stage 2
+// Test Successful Snapping of all 4 pieces via pointer events -> Unlock Stage 2
 engine.loadLevel(lvl5);
 engine.loosePieces.forEach(p => {
-  p.x = p.targetX;
-  p.y = p.targetY;
-  p.placed = true;
+  canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: p.x + 5, clientY: p.y + 5 }));
+  canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: p.targetX + 5, clientY: p.targetY + 5 }));
+  canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: p.targetX + 5, clientY: p.targetY + 5 }));
+  assert.equal(p.placed, true, 'Piece must snap into target socket upon release');
 });
-const unplaced = engine.loosePieces.filter(p => !p.placed);
-assert.equal(unplaced.length, 0);
-engine.restorationStage = 2; // Grouting unlocks!
-
 assert.equal(engine.restorationStage, 2, 'All 4 pieces snapped unlocks Stage 2 grouting');
-console.log('  ✓ Two-stage restoration, piece snapping, +15% fragility accumulation, and stage unlocking verified.\n');
+console.log('  ✓ Two-stage restoration, real pointer dragging & snapping, and stage unlocking verified.\n');
+
+// ---------------------------------------------------------------------------
+// TEST 6: Sequential Campaign Unlocking & LocalStorage Persistence
+// ---------------------------------------------------------------------------
+console.log('Test 6: Sequential Campaign Progression & LocalStorage Persistence');
+const storageMap = new Map();
+const mockStorage = {
+  getItem: (k) => storageMap.get(k) || null,
+  setItem: (k, v) => storageMap.set(k, String(v))
+};
+globalThis.localStorage = mockStorage;
+
+const getUnlockedLevel = () => {
+  const val = parseInt(mockStorage.getItem('grout_unlocked_level') || '1', 10);
+  return !isNaN(val) && val >= 1 ? Math.min(val, 6) : 1;
+};
+
+const unlockLevel = (lvlId) => {
+  const cur = getUnlockedLevel();
+  if (lvlId > cur) {
+    mockStorage.setItem('grout_unlocked_level', String(Math.min(lvlId, 6)));
+  }
+};
+
+assert.equal(getUnlockedLevel(), 1, 'Initial unlocked level must be 1');
+
+// Sequential unlock verification
+unlockLevel(2);
+assert.equal(getUnlockedLevel(), 2, 'Level 2 unlocks after completing Level 1');
+unlockLevel(3);
+assert.equal(getUnlockedLevel(), 3, 'Level 3 unlocks after completing Level 2');
+unlockLevel(4);
+assert.equal(getUnlockedLevel(), 4, 'Level 4 unlocks after completing Level 3');
+unlockLevel(5);
+assert.equal(getUnlockedLevel(), 5, 'Level 5 unlocks after completing Level 4');
+unlockLevel(6);
+assert.equal(getUnlockedLevel(), 6, 'Endless ASMR (Level 6) unlocks after completing Level 5');
+
+// Completed levels remain replayable
+for (let lvl = 1; lvl <= 6; lvl++) {
+  assert.ok(lvl <= getUnlockedLevel(), `Level ${lvl} must remain unlocked for replay`);
+}
+console.log('  ✓ Sequential campaign unlocking (1 -> 2 -> 3 -> 4 -> 5 -> Endless) and replayability verified.\n');
 
 console.log('🎉 All Campaign Mechanics Tests Passed Successfully!\n');

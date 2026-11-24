@@ -603,6 +603,26 @@ body {
   font-weight: 700;
 }
 
+.level-pill.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: var(--bg-card);
+  color: var(--text-faint);
+}
+
+.level-pill.locked:hover {
+  background: var(--bg-card);
+  color: var(--text-faint);
+  border-color: var(--border-subtle);
+}
+
+.level-pill .lock-icon {
+  font-size: 0.65rem;
+  opacity: 0.8;
+  margin-right: 3px;
+}
+
 /* Viewport Canvas Frame */
 .viewport-box {
   width: 100%;

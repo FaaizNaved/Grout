@@ -125,20 +125,53 @@ class GroutApp {
     });
   }
 
+  getUnlockedLevel() {
+    try {
+      const stored = localStorage.getItem('grout_unlocked_level');
+      const val = parseInt(stored, 10);
+      return !isNaN(val) && val >= 1 ? Math.min(val, 6) : 1;
+    } catch (e) {
+      return 1;
+    }
+  }
+
+  unlockLevel(levelId) {
+    try {
+      const current = this.getUnlockedLevel();
+      if (levelId > current) {
+        localStorage.setItem('grout_unlocked_level', String(Math.min(levelId, 6)));
+      }
+    } catch (e) {
+      // storage unavailable
+    }
+    this.setupLevelSelector();
+  }
+
   setupLevelSelector() {
     const container = document.getElementById('levelSelectorRow');
     if (!container) return;
     container.innerHTML = '';
+    const unlockedLevel = this.getUnlockedLevel();
 
     LEVELS.forEach((level, idx) => {
+      const isLocked = level.id > unlockedLevel;
       const pill = document.createElement('button');
-      pill.className = `level-pill ${idx === this.currentLevelIndex ? 'active' : ''}`;
-      pill.textContent = level.id === 6
+      pill.className = `level-pill ${idx === this.currentLevelIndex ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
+      const label = level.id === 6
         ? `BONUS: Endless ASMR`
         : `${level.id}. ${level.name.split(' (')[0]}`;
-      pill.addEventListener('click', () => {
-        this.loadLevel(idx);
-      });
+
+      if (isLocked) {
+        pill.innerHTML = `<span class="lock-icon">🔒</span> ${label}`;
+        pill.disabled = true;
+        pill.title = `Complete Level ${level.id - 1} to unlock`;
+      } else {
+        pill.textContent = label;
+        pill.title = level.name;
+        pill.addEventListener('click', () => {
+          this.loadLevel(idx);
+        });
+      }
       container.appendChild(pill);
     });
   }
@@ -147,8 +180,14 @@ class GroutApp {
     if (index < 0 || index >= LEVELS.length) {
       index = 0;
     }
-    this.currentLevelIndex = index;
     const level = LEVELS[index];
+    const unlockedLevel = this.getUnlockedLevel();
+    if (level && level.id > unlockedLevel) {
+      this.showToast(`Level ${level.id} is locked! Complete Level ${level.id - 1} first.`);
+      return;
+    }
+
+    this.currentLevelIndex = index;
 
     // Dismiss modals if open
     const victoryModal = document.getElementById('victoryModal');
@@ -261,6 +300,9 @@ class GroutApp {
   }
 
   onComplete(level, metrics) {
+    // Unlock next level in sequential campaign progression
+    this.unlockLevel(level.id + 1);
+
     if (level.id === 5 || level.isBossLevel) {
       const campaignCompleteModal = document.getElementById('campaignCompleteModal');
       if (campaignCompleteModal) {

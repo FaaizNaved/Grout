@@ -442,8 +442,8 @@ export const LEVELS = [
     name: "The Hexagon Bathroom Floor",
     hindiName: "हेक्सागोन बाथरूम फ़्लोर (3-वे जोड़)",
     memeRef: "Thekedar: 3-way hexagon joints me haath kaanp jayega! Mistri: Grout bhar denge!",
-    thekedarQuote: "“Look at these 120-degree three-way intersections! Aggressive scrubbing will blow out the joints!”",
-    mistriQuote: "“Careful with the trowel! Violent scrubbing causes a blowout (-10% penalty). Grout smoothly! 😎”",
+    thekedarQuote: "“Look at these 120-degree three-way intersections! Aggressive sponge scrubbing will blow out the sealed joints!”",
+    mistriQuote: "“Careful with the sponge! Violent scrubbing on sealed joints causes a blowout (-10% penalty). Buff smoothly! 😎”",
     badge: "Level 2: Geometric Craftsman",
     tileColor: "#E0F2FE", // Soft pastel sky blue
     tileBorder: "#BAE6FD",
