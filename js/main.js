@@ -39,6 +39,12 @@ class GroutApp {
       (coverage, combo) => this.onProgress(coverage, combo),
       (level, coverage) => this.onComplete(level, coverage)
     );
+
+    this.engine.onWaveComplete = (wave, metrics) => {
+      const levelNumEl = document.getElementById('levelNumber');
+      if (levelNumEl) levelNumEl.textContent = `ENDLESS ASMR — WAVE ${wave}`;
+      this.showToast(`✨ Wave ${wave} Reached! Sukoon hi sukoon.`);
+    };
   }
 
   setupPalette() {
@@ -83,9 +89,21 @@ class GroutApp {
     this.currentLevelIndex = index;
     const level = LEVELS[index];
 
+    // Dismiss victory modal if open
+    const victoryModal = document.getElementById('victoryModal');
+    if (victoryModal) victoryModal.classList.remove('active');
+
     // Update level HUD
     const levelNumEl = document.getElementById('levelNumber');
-    if (levelNumEl) levelNumEl.textContent = `STAGE ${level.id} / ${LEVELS.length}`;
+    if (levelNumEl) {
+      levelNumEl.textContent = level.id === 9
+        ? `STAGE 9 / ${LEVELS.length} (ENDLESS ASMR)`
+        : `STAGE ${level.id} / ${LEVELS.length}`;
+    }
+
+    if (level.id === 4 || level.id === 8) {
+      audio.triggerMemeSound('kya_bana_diya');
+    }
 
     const levelTitleEl = document.getElementById('levelTitle');
     if (levelTitleEl) levelTitleEl.textContent = level.name;
@@ -198,6 +216,7 @@ class GroutApp {
 
     // Reset current level
     document.getElementById('btnResetLevel').addEventListener('click', () => {
+      audio.triggerMemeSound('paisa_barbaad');
       this.loadLevel(this.currentLevelIndex);
       this.showToast('Joint cleared. Ready for fresh paste.');
     });

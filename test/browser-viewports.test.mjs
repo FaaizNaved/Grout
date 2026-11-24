@@ -118,6 +118,7 @@ async function runViewportTests() {
   edgeProc = spawn(edgePath, [
     '--headless=new',
     '--disable-gpu',
+    '--autoplay-policy=no-user-gesture-required',
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-features=EdgeFre,SyncConfirmation',
@@ -665,8 +666,103 @@ async function runViewportTests() {
   }
   console.log('✔ Full two-phase workflow verified in real browser DOM!');
 
+  console.log('\n=== TEST 5: Phase 3 Authentic Soundboard & Level 9 Endless ASMR Mode ===');
+
+  // Step 1: Open and verify redesigned Soundboard Modal
+  await client.eval('document.getElementById("btnOpenSoundboard").click()');
+  await new Promise(r => setTimeout(r, 400));
+
+  const soundboardState = await client.eval(`(() => {
+    const modal = document.getElementById('soundboardModal');
+    const chips = Array.from(document.querySelectorAll('.sound-chip'));
+    const verifiedChips = document.querySelectorAll('.chip-status-pill.verified');
+    const slotChips = document.querySelectorAll('.chip-status-pill.slot');
+    return {
+      isOpen: modal.classList.contains('active'),
+      totalChips: chips.length,
+      verifiedCount: verifiedChips.length,
+      slotCount: slotChips.length
+    };
+  })()`);
+
+  console.log(`Soundboard State: Open=${soundboardState.isOpen}, Chips=${soundboardState.totalChips}, Verified=${soundboardState.verifiedCount}, Slots=${soundboardState.slotCount}`);
+  if (!soundboardState.isOpen || soundboardState.totalChips !== 10 || soundboardState.verifiedCount !== 4 || soundboardState.slotCount !== 6) {
+    throw new Error(`Soundboard modal validation failed: ${JSON.stringify(soundboardState)}`);
+  }
+
+  // Click a verified meme sound chip and verify playing visual state
+  await client.eval(`(() => {
+    const chip = document.querySelector('.sound-chip[data-sound="grout_bhar_denge"]');
+    if (chip) chip.click();
+  })()`);
+  await new Promise(r => setTimeout(r, 200));
+
+  const playingState = await client.eval(`(() => {
+    const chip = document.querySelector('.sound-chip[data-sound="grout_bhar_denge"]');
+    const icon = chip.querySelector('.chip-play-icon');
+    return {
+      isPlaying: chip.classList.contains('is-playing'),
+      iconText: icon ? icon.textContent : ''
+    };
+  })()`);
+  console.log(`Playing Chip State: isPlaying=${playingState.isPlaying}, icon='${playingState.iconText}'`);
+  await client.screenshot(path.join(EVIDENCE_DIR, 'soundboard-redesigned.png'));
+  console.log('  Saved Screenshot: test/evidence/soundboard-redesigned.png');
+
+  // Close Soundboard Modal
+  await client.eval('document.getElementById("btnCloseSoundboard").click()');
+  await new Promise(r => setTimeout(r, 300));
+
+  // Step 2: Level 9 Endless ASMR Mode Verification (AUD-06)
+  await client.eval('window.groutApp.loadLevel(8)'); // 0-indexed index 8 = Level 9
+  await new Promise(r => setTimeout(r, 400));
+
+  const level9State = await client.eval(`(() => {
+    const lvlNum = document.getElementById('levelNumber').textContent;
+    const isEndless = window.groutApp.engine.currentLevel.isEndless;
+    const wave = window.groutApp.engine.endlessWave;
+    return { lvlNum, isEndless, wave };
+  })()`);
+  console.log(`Level 9 State: Header="${level9State.lvlNum}", isEndless=${level9State.isEndless}, Wave=${level9State.wave}`);
+  if (!level9State.isEndless || level9State.wave !== 1) {
+    throw new Error(`Level 9 Endless configuration failed: ${JSON.stringify(level9State)}`);
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'level-9-endless-mode.png'));
+  console.log('  Saved Screenshot: test/evidence/level-9-endless-mode.png');
+
+  // Step 3: Simulate wave completion and assert wave advancement without game-over modal
+  await client.eval(`(() => {
+    const engine = window.groutApp.engine;
+    engine.samplePoints.forEach(pt => {
+      pt.filled = true;
+      engine.filledPointsCount++;
+    });
+    for (let i = 0; i < 10; i++) {
+      engine.depositHazePoint(120 + i * 15, 120 + i * 15);
+    }
+    engine.hazePatches.forEach(p => {
+      p.cleaned = true;
+      engine.cleanedHazeCount++;
+    });
+    engine.checkLevelCompletion();
+  })()`);
+  await new Promise(r => setTimeout(r, 400));
+
+  const wave2State = await client.eval(`(() => {
+    const wave = window.groutApp.engine.endlessWave;
+    const victoryActive = document.getElementById('victoryModal').classList.contains('active');
+    return { wave, victoryActive };
+  })()`);
+  console.log(`Wave Advance State: Wave=${wave2State.wave}, VictoryModalActive=${wave2State.victoryActive}`);
+  if (wave2State.wave !== 2 || wave2State.victoryActive) {
+    throw new Error(`Endless wave progression failed: wave=${wave2State.wave}, victoryActive=${wave2State.victoryActive}`);
+  }
+  await client.screenshot(path.join(EVIDENCE_DIR, 'level-9-wave-2-advanced.png'));
+  console.log('  Saved Screenshot: test/evidence/level-9-wave-2-advanced.png');
+  console.log('✔ Phase 3 Authentic Soundboard and Endless Mode verified in real browser DOM!');
+
   console.log('\n========================================');
-  console.log('ALL PHASE 2 REGRESSION ASSERTIONS PASSED!');
+  console.log('ALL PHASE 2 & 3 REGRESSION ASSERTIONS PASSED!');
   console.log('========================================\n');
 
   try { await client.send('Page.close'); } catch {}

@@ -48,6 +48,13 @@ export class GroutEngine {
     this.comboTimer = null;
     this.isCompleted = false;
 
+    // Endless Mode & Contextual Audio state
+    this.endlessWave = 1;
+    this.onWaveComplete = null;
+    this.hasTriggeredFirstGroutMeme = false;
+    this.hasTriggeredCleanMeme = false;
+    this.hasTriggeredComboMeme = false;
+
     this.setupListeners();
     this.handleResize();
     window.addEventListener('resize', () => this.handleResize());
@@ -145,7 +152,16 @@ export class GroutEngine {
   }
 
   resizeLevel(oldWidth, oldHeight, newWidth, newHeight) {
+    if (newWidth === undefined && newHeight === undefined) {
+      newWidth = oldWidth;
+      newHeight = oldHeight;
+      oldWidth = this.width;
+      oldHeight = this.height;
+    }
     if (!oldWidth || !oldHeight || oldWidth === 0 || oldHeight === 0) return;
+
+    this.width = newWidth;
+    this.height = newHeight;
 
     const scaleX = newWidth / oldWidth;
     const scaleY = newHeight / oldHeight;
@@ -164,7 +180,7 @@ export class GroutEngine {
     });
 
     // 2. Re-generate gaps for new dimensions
-    this.gaps = this.currentLevel.generateGaps(newWidth, newHeight);
+    this.gaps = this.currentLevel.generateGaps(newWidth, newHeight, this.endlessWave || 1);
     this.samplePoints = [];
     this.filledPointsCount = 0;
 
@@ -231,12 +247,16 @@ export class GroutEngine {
     this.hazeGrid = new Map();
     this.totalHazeDeposited = 0;
     this.cleanedHazeCount = 0;
+    this.endlessWave = 1;
+    this.hasTriggeredFirstGroutMeme = false;
+    this.hasTriggeredCleanMeme = false;
+    this.hasTriggeredComboMeme = false;
     this.initLevel(level, true);
     this.notifyProgress();
   }
 
   initLevel(level, playGreeting = true) {
-    this.gaps = level.generateGaps(this.width, this.height);
+    this.gaps = level.generateGaps(this.width, this.height, this.endlessWave || 1);
     this.samplePoints = [];
     this.filledPointsCount = 0;
 
@@ -464,7 +484,9 @@ export class GroutEngine {
     const hazeReady = hazeCleaning >= targetClean && this.totalHazeDeposited >= this.config.minHazeThreshold;
     const isComplete = groutReady && hazeReady;
 
-    const compositeScore = Math.round((groutCoverage * 0.5) + (hazeCleaning * 0.5));
+    const roundedGrout = Math.min(Math.round(groutCoverage), 100);
+    const roundedHaze = Math.min(Math.round(hazeCleaning), 100);
+    const compositeScore = Math.min(Math.round((roundedGrout * 0.5) + (roundedHaze * 0.5)), 100);
 
     let statusText = 'Phase 1: Fill joints with trowel';
     if (groutReady && !hazeReady) {
@@ -476,9 +498,9 @@ export class GroutEngine {
     }
 
     return {
-      groutCoverage: Math.min(Math.round(groutCoverage), 100),
-      hazeCleaning: Math.min(Math.round(hazeCleaning), 100),
-      compositeScore: Math.min(compositeScore, 100),
+      groutCoverage: roundedGrout,
+      hazeCleaning: roundedHaze,
+      compositeScore,
       targetGrout,
       targetClean,
       groutReady,
@@ -502,6 +524,11 @@ export class GroutEngine {
 
     const metrics = this.getMetrics();
     if (metrics.isComplete) {
+      if (this.currentLevel && (this.currentLevel.id === 9 || this.currentLevel.isEndless)) {
+        this.advanceEndlessWave(metrics);
+        return;
+      }
+
       this.isCompleted = true;
       this.spawnConfetti();
       audio.playFanfare();
@@ -510,6 +537,31 @@ export class GroutEngine {
       if (this.onComplete) {
         this.onComplete(this.currentLevel, metrics);
       }
+    }
+  }
+
+  advanceEndlessWave(metrics) {
+    this.endlessWave = (this.endlessWave || 1) + 1;
+    this.spawnConfetti();
+    audio.playChime(5);
+    audio.triggerMemeSound('sukoon_asmr');
+    this.addFloatingText(`WAVE ${this.endlessWave} REACHED! SUKOON ✨`, this.width / 2, this.height / 2);
+
+    this.strokes = [];
+    this.gapIntervals = new Map();
+    this.hazePatches = [];
+    this.hazeGrid = new Map();
+    this.totalHazeDeposited = 0;
+    this.cleanedHazeCount = 0;
+    this.hasTriggeredFirstGroutMeme = false;
+    this.hasTriggeredCleanMeme = false;
+    this.hasTriggeredComboMeme = false;
+
+    this.initLevel(this.currentLevel, false);
+    this.notifyProgress();
+
+    if (this.onWaveComplete) {
+      this.onWaveComplete(this.endlessWave, metrics);
     }
   }
 
@@ -718,6 +770,11 @@ export class GroutEngine {
     }
 
     if (newlyFilled > 0) {
+      if (!this.hasTriggeredFirstGroutMeme) {
+        this.hasTriggeredFirstGroutMeme = true;
+        audio.triggerMemeSound('grout_bhar_denge');
+      }
+
       this.combo++;
       if (this.comboTimer) clearTimeout(this.comboTimer);
       this.comboTimer = setTimeout(() => {
@@ -730,6 +787,11 @@ export class GroutEngine {
         const praiseList = ["PERFECT JOINT", "SMOOTH SPREAD", "MISTRI APPROVED", "TRUE JUGAAD"];
         const praise = praiseList[Math.floor(Math.random() * praiseList.length)];
         this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, p2.x, p2.y - 20);
+
+        if (!this.hasTriggeredComboMeme) {
+          this.hasTriggeredComboMeme = true;
+          audio.triggerMemeSound('heavy_driver');
+        }
       }
     }
 
@@ -783,6 +845,17 @@ export class GroutEngine {
         const cleanPraises = ["SPARKLING TILE", "HAZE BUFFED", "CLEAN GLAZE", "MISTRI SHINE"];
         const praise = cleanPraises[Math.floor(Math.random() * cleanPraises.length)];
         this.addFloatingText(`${praise} (${Math.min(this.combo, 10)}x)`, p2.x, p2.y - 20);
+
+        if (!this.hasTriggeredComboMeme) {
+          this.hasTriggeredComboMeme = true;
+          audio.triggerMemeSound('heavy_driver');
+        }
+      }
+
+      const metrics = this.getMetrics();
+      if (metrics.hazeReady && !this.hasTriggeredCleanMeme) {
+        this.hasTriggeredCleanMeme = true;
+        audio.triggerMemeSound('sukoon_asmr');
       }
 
       this.notifyProgress();
@@ -824,7 +897,7 @@ export class GroutEngine {
     if (this.currentLevel && this.currentLevel.isHeartShape) {
       this.drawHeart(ctx, width / 2, height / 2 - height * 0.35, width * 0.68, height * 0.64);
     } else if (this.currentLevel && this.currentLevel.tiles) {
-      const tiles = this.currentLevel.tiles(width, height);
+      const tiles = this.currentLevel.tiles(width, height, this.endlessWave || 1);
       tiles.forEach((tile) => {
         // Natural soft tile drop shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';

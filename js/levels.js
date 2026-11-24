@@ -1,5 +1,153 @@
 // 8 Viral Meme Levels + Endless ASMR Mode with Warm Artisanal Palettes for GROUT!
 
+export function generateEndlessGaps(w, h, wave = 1) {
+  const patternType = (((wave || 1) - 1) % 5) + 1;
+  const gaps = [];
+
+  switch (patternType) {
+    case 1: {
+      // Wave 1: Classical Running Bond Subway Brick
+      const rows = 4;
+      const cols = 4;
+      const rowH = h / rows;
+      const colW = w / cols;
+      for (let r = 1; r < rows; r++) {
+        gaps.push({ x1: 0, y1: r * rowH, x2: w, y2: r * rowH, width: 24 });
+      }
+      for (let r = 0; r < rows; r++) {
+        const offset = (r % 2 === 0) ? 0 : colW / 2;
+        for (let c = 1; c < cols; c++) {
+          const x = c * colW + offset;
+          if (x < w) {
+            gaps.push({ x1: x, y1: r * rowH, x2: x, y2: (r + 1) * rowH, width: 22 });
+          }
+        }
+      }
+      break;
+    }
+
+    case 2: {
+      // Wave 2: 45° Diamond Lattice Grid
+      const cx = w / 2;
+      const cy = h / 2;
+      const span = Math.min(w, h) * 0.40;
+      // Diamond outer rhombus
+      gaps.push({ x1: cx, y1: cy - span, x2: cx + span, y2: cy, width: 26 });
+      gaps.push({ x1: cx + span, y1: cy, x2: cx, y2: cy + span, width: 26 });
+      gaps.push({ x1: cx, y1: cy + span, x2: cx - span, y2: cy, width: 26 });
+      gaps.push({ x1: cx - span, y1: cy, x2: cx, y2: cy - span, width: 26 });
+      // Inner cross
+      gaps.push({ x1: cx, y1: cy - span, x2: cx, y2: cy + span, width: 24 });
+      gaps.push({ x1: cx - span, y1: cy, x2: cx + span, y2: cy, width: 24 });
+      // Outer border spokes
+      gaps.push({ x1: w * 0.08, y1: cy - span, x2: cx, y2: cy - span, width: 20 });
+      gaps.push({ x1: cx, y1: cy - span, x2: w * 0.92, y2: cy - span, width: 20 });
+      gaps.push({ x1: w * 0.08, y1: cy + span, x2: cx, y2: cy + span, width: 20 });
+      gaps.push({ x1: cx, y1: cy + span, x2: w * 0.92, y2: cy + span, width: 20 });
+      break;
+    }
+
+    case 3: {
+      // Wave 3: Artisanal Fractured Flagstone / Mosaic
+      const cx = w / 2;
+      const cy = h / 2;
+      gaps.push({ x1: cx - 40, y1: cy - 30, x2: cx + 50, y2: cy - 20, width: 26 });
+      gaps.push({ x1: cx + 50, y1: cy - 20, x2: cx + 20, y2: cy + 45, width: 28 });
+      gaps.push({ x1: cx + 20, y1: cy + 45, x2: cx - 45, y2: cy + 30, width: 24 });
+      gaps.push({ x1: cx - 45, y1: cy + 30, x2: cx - 40, y2: cy - 30, width: 26 });
+      // Organic spokes to boundary
+      gaps.push({ x1: cx - 40, y1: cy - 30, x2: w * 0.12, y2: h * 0.15, width: 22 });
+      gaps.push({ x1: cx + 50, y1: cy - 20, x2: w * 0.88, y2: h * 0.18, width: 24 });
+      gaps.push({ x1: cx + 20, y1: cy + 45, x2: w * 0.82, y2: h * 0.85, width: 22 });
+      gaps.push({ x1: cx - 45, y1: cy + 30, x2: w * 0.15, y2: h * 0.82, width: 24 });
+      break;
+    }
+
+    case 4: {
+      // Wave 4: Artisanal Herringbone Zigzag
+      const rows = 3;
+      const rowH = h / (rows + 1);
+      for (let r = 1; r <= rows; r++) {
+        const y = r * rowH;
+        gaps.push({ x1: w * 0.10, y1: y - 18, x2: w * 0.35, y2: y + 22, width: 24 });
+        gaps.push({ x1: w * 0.35, y1: y + 22, x2: w * 0.65, y2: y - 18, width: 24 });
+        gaps.push({ x1: w * 0.65, y1: y - 18, x2: w * 0.90, y2: y + 22, width: 24 });
+      }
+      gaps.push({ x1: w * 0.35, y1: h * 0.12, x2: w * 0.35, y2: h * 0.88, width: 20 });
+      gaps.push({ x1: w * 0.65, y1: h * 0.12, x2: w * 0.65, y2: h * 0.88, width: 20 });
+      break;
+    }
+
+    case 5: {
+      // Wave 5: Modular Versailles French Palace Stone
+      const cx = w / 2;
+      const cy = h / 2;
+      const cw = w * 0.36;
+      const ch = h * 0.36;
+      gaps.push({ x1: cx - cw / 2, y1: cy - ch / 2, x2: cx + cw / 2, y2: cy - ch / 2, width: 28 });
+      gaps.push({ x1: cx + cw / 2, y1: cy - ch / 2, x2: cx + cw / 2, y2: cy + ch / 2, width: 28 });
+      gaps.push({ x1: cx + cw / 2, y1: cy + ch / 2, x2: cx - cw / 2, y2: cy + ch / 2, width: 28 });
+      gaps.push({ x1: cx - cw / 2, y1: cy + ch / 2, x2: cx - cw / 2, y2: cy - ch / 2, width: 28 });
+      // Surrounding peripheral border joints
+      gaps.push({ x1: w * 0.10, y1: cy - ch / 2, x2: cx - cw / 2, y2: cy - ch / 2, width: 22 });
+      gaps.push({ x1: cx + cw / 2, y1: cy - ch / 2, x2: w * 0.90, y2: cy - ch / 2, width: 22 });
+      gaps.push({ x1: w * 0.10, y1: cy + ch / 2, x2: cx - cw / 2, y2: cy + ch / 2, width: 22 });
+      gaps.push({ x1: cx + cw / 2, y1: cy + ch / 2, x2: w * 0.90, y2: cy + ch / 2, width: 22 });
+      break;
+    }
+  }
+
+  return gaps;
+}
+
+export function generateEndlessTiles(w, h, wave = 1) {
+  const patternType = (((wave || 1) - 1) % 5) + 1;
+  const tiles = [];
+  const cx = w / 2;
+  const cy = h / 2;
+
+  switch (patternType) {
+    case 1: {
+      const rows = 4;
+      const cols = 4;
+      const rowH = h / rows;
+      const colW = w / cols;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          tiles.push({
+            x: c * colW + 4,
+            y: r * rowH + 4,
+            w: colW - 8,
+            h: rowH - 8,
+            label: `Subway W${wave}`
+          });
+        }
+      }
+      break;
+    }
+    case 2: {
+      const span = Math.min(w, h) * 0.36;
+      tiles.push({ x: cx - span * 0.5, y: cy - span * 0.5, w: span, h: span, label: `Diamond W${wave}` });
+      break;
+    }
+    case 3: {
+      tiles.push({ x: w * 0.18, y: h * 0.20, w: w * 0.64, h: h * 0.60, label: `Mosaic W${wave}` });
+      break;
+    }
+    case 4: {
+      tiles.push({ x: w * 0.12, y: h * 0.15, w: w * 0.76, h: h * 0.70, label: `Herringbone W${wave}` });
+      break;
+    }
+    case 5: {
+      const cw = w * 0.32;
+      const ch = h * 0.32;
+      tiles.push({ x: cx - cw / 2, y: cy - ch / 2, w: cw, h: ch, label: `Versailles W${wave}` });
+      break;
+    }
+  }
+  return tiles;
+}
+
 export const LEVELS = [
   {
     id: 1,
@@ -270,27 +418,9 @@ export const LEVELS = [
     targetFill: 84,
     groutColor: "#B45309",
     groutBorder: "#92400E",
-    generateGaps: (w, h) => {
-      const rows = 4;
-      const cols = 4;
-      const gaps = [];
-      const rowH = h / rows;
-      const colW = w / cols;
-      for (let r = 1; r < rows; r++) {
-        gaps.push({ x1: 0, y1: r * rowH, x2: w, y2: r * rowH, width: 24 });
-      }
-      for (let r = 0; r < rows; r++) {
-        const offset = (r % 2 === 0) ? 0 : colW / 2;
-        for (let c = 1; c < cols; c++) {
-          const x = c * colW + offset;
-          if (x < w) {
-            gaps.push({ x1: x, y1: r * rowH, x2: x, y2: (r + 1) * rowH, width: 24 });
-          }
-        }
-      }
-      return gaps;
-    },
-    tiles: (w, h) => []
+    isEndless: true,
+    generateGaps: (w, h, wave = 1) => generateEndlessGaps(w, h, wave),
+    tiles: (w, h, wave = 1) => generateEndlessTiles(w, h, wave)
   }
 ];
 

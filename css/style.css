@@ -777,7 +777,66 @@ canvas#gameCanvas {
   color: var(--text-heading);
 }
 
-/* Soundboard Grid */
+/* Soundboard Modal & Grid */
+.modal-card-soundboard {
+  max-width: 560px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.soundboard-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-top: 4px;
+}
+
+.soundboard-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.soundboard-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+
+.soundboard-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.section-label {
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.section-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.verified-badge {
+  background: #DEF7EC;
+  color: #03543F;
+}
+
+.slot-badge {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
 .sound-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -788,10 +847,11 @@ canvas#gameCanvas {
 .sound-chip {
   background: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
+  gap: 6px;
   align-items: flex-start;
   text-align: left;
   cursor: pointer;
@@ -803,18 +863,87 @@ canvas#gameCanvas {
   border-color: var(--border-medium);
 }
 
+.sound-chip.is-playing {
+  background: #FEF3C7 !important;
+  border-color: #D97706 !important;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.25);
+}
+
+.chip-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.chip-play-icon {
+  font-size: 0.72rem;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--border-medium);
+  color: var(--text-heading);
+  transition: all 0.15s ease;
+}
+
+.sound-chip.is-playing .chip-play-icon {
+  background: #D97706;
+  color: #FFFFFF;
+}
+
+.chip-status-pill {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+}
+
+.chip-status-pill.verified {
+  background: #ECFDF5;
+  color: #047857;
+  border: 1px solid #A7F3D0;
+}
+
+.chip-status-pill.slot {
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.chip-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .chip-title {
   font-family: var(--font-sans);
-  font-size: 0.82rem;
+  font-size: 0.80rem;
   font-weight: 700;
   color: var(--text-heading);
+  line-height: 1.25;
+}
+
+.chip-hindi {
+  font-family: var(--font-serif);
+  font-size: 0.70rem;
+  color: var(--terracotta);
+  font-style: italic;
+  margin-top: 2px;
+  line-height: 1.2;
 }
 
 .chip-desc {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
+  line-height: 1.2;
 }
 
 .pop-anim {

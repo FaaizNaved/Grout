@@ -1,51 +1,139 @@
-// Web Audio API procedural sound engine & Meme voice soundboard for GROUT!
+// Web Audio API procedural sound engine & Authentic Meme Voice Player for GROUT!
+
+export const MEME_CLIPS = {
+  grout_bhar_denge: {
+    id: 'grout_bhar_denge',
+    name: '"Isme Grout Bhar Denge!"',
+    hindi: '“टेंशन मत लो साब, इसमें ग्राउट भर देंगे!”',
+    desc: 'The original Mistri defense anthem',
+    file: 'meme-grout-bhar-denge.mp3',
+    fallbackFile: 'meme-grout-bhar-denge.wav',
+    category: 'classics',
+    bundled: true
+  },
+  mistri_op: {
+    id: 'mistri_op',
+    name: '"Thekedar Shocked, Mistri Rocked!"',
+    hindi: '“ठेकेदार शॉक्ड, मिस्त्री रॉक्ड!”',
+    desc: 'Victory celebration fanfare',
+    file: 'meme-thekedar-shocked.mp3',
+    fallbackFile: 'meme-thekedar-shocked.wav',
+    category: 'classics',
+    bundled: true
+  },
+  kya_bana_diya: {
+    id: 'kya_bana_diya',
+    name: '"Bhai Ye Kya Bana Diya?!"',
+    hindi: '“भाई ये क्या बना दिया तूने?!”',
+    desc: 'Inspector site despair on crooked tiles',
+    file: 'meme-kya-bana-diya.mp3',
+    fallbackFile: 'meme-kya-bana-diya.wav',
+    category: 'classics',
+    bundled: true
+  },
+  sukoon_asmr: {
+    id: 'sukoon_asmr',
+    name: '"Sukoon Hi Sukoon"',
+    hindi: '“बस अब सुकून ही सुकून है!”',
+    desc: '100% clean ASMR satisfaction',
+    file: 'meme-sukoon-asmr.mp3',
+    fallbackFile: 'meme-sukoon-asmr.wav',
+    category: 'asmr',
+    bundled: true
+  },
+  heavy_driver: {
+    id: 'heavy_driver',
+    name: '"Bete Mauj Kardi (Heavy Driver)"',
+    hindi: '“अरे बेटाजी मौज कर दी! तुम तो हैवी ड्राइवर निकले!”',
+    desc: '12x continuous combo streak praise',
+    file: 'meme-heavy-driver.mp3',
+    category: 'reactions',
+    bundled: false
+  },
+  paisa_barbaad: {
+    id: 'paisa_barbaad',
+    name: '"Paisa Barbaad BC!"',
+    hindi: '“पैसा बर्बाद हो गया!”',
+    desc: 'Level reset / wipe reaction',
+    file: 'meme-paisa-barbaad.mp3',
+    category: 'reactions',
+    bundled: false
+  },
+  gajab_beizzati: {
+    id: 'gajab_beizzati',
+    name: '"Gajab Beizzati Hai Yaar"',
+    hindi: '“गज़ब बेइज़्ज़ती है यार!”',
+    desc: 'Dirty tiles 0% clean warning',
+    file: 'meme-gajab-beizzati.mp3',
+    category: 'reactions',
+    bundled: false
+  },
+  control_uday: {
+    id: 'control_uday',
+    name: '"Control Uday Control"',
+    hindi: '“कंट्रोल उदय कंट्रोल!”',
+    desc: 'Excessive rapid scrubbing warning',
+    file: 'meme-control-uday.mp3',
+    category: 'reactions',
+    bundled: false
+  },
+  kehna_kya_chahte_ho: {
+    id: 'kehna_kya_chahte_ho',
+    name: '"Arrey Kehna Kya Chahte Ho?!"',
+    hindi: '“अरे कहना क्या चाहते हो?!”',
+    desc: 'Complex geometry challenge',
+    file: 'meme-kehna-kya-chahte-ho.mp3',
+    category: 'reactions',
+    bundled: false
+  },
+  bilkul_riks_nahi: {
+    id: 'bilkul_riks_nahi',
+    name: '"Bilkul Riks Nahi Lene Ka"',
+    hindi: '“अपुन को बिल्कुल रिक्स नहीं लेने का!”',
+    desc: 'Final 5% meticulous buffing',
+    file: 'meme-bilkul-riks-nahi.mp3',
+    category: 'reactions',
+    bundled: false
+  }
+};
 
 class AudioManager {
   constructor() {
     this.ctx = null;
-    this.muted = localStorage.getItem('grout_muted') === 'true';
+    this.muted = typeof localStorage !== 'undefined' && localStorage.getItem('grout_muted') === 'true';
     this.lastSquelchTime = 0;
     this.lastScrapeTime = 0;
-    this.speechSynth = window.speechSynthesis;
-    this.speechVoice = null;
-    this.initSpeech();
+    this.lastMemePlayTime = -10000;
+    this.currentMemeAudio = null;
+    this.onMemeStateChange = null;
   }
 
   ensureContext() {
-    if (!this.ctx) {
+    if (!this.ctx && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
   }
 
   toggleMute() {
     this.muted = !this.muted;
-    localStorage.setItem('grout_muted', this.muted);
-    return this.muted;
-  }
-
-  initSpeech() {
-    if (!this.speechSynth) return;
-    const findVoice = () => {
-      const voices = this.speechSynth.getVoices();
-      this.speechVoice = voices.find(v => v.lang.includes('hi') || v.lang.includes('IN')) ||
-                         voices.find(v => v.lang.includes('en-IN') || v.lang.includes('en-GB') || v.lang.includes('en-US')) ||
-                         voices[0];
-    };
-    findVoice();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = findVoice;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('grout_muted', this.muted);
     }
+    if (this.muted) {
+      this.stopCurrentMemeAudio();
+    }
+    return this.muted;
   }
 
   vibrate(ms = 30) {
     if (this.muted) return;
-    if (navigator.vibrate) {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try {
         navigator.vibrate(ms);
       } catch (e) {
@@ -232,62 +320,125 @@ class AudioManager {
     });
   }
 
-  // Voice speech synthesis
-  playMemeVoice(text, rate = 1.05, pitch = 1.1) {
-    if (this.muted) return;
-    if (!this.speechSynth) return;
-
-    try {
-      this.speechSynth.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      if (this.speechVoice) {
-        utterance.voice = this.speechVoice;
-      }
-      utterance.rate = rate;
-      utterance.pitch = pitch;
-      utterance.volume = 1.0;
-      this.speechSynth.speak(utterance);
-    } catch (e) {
-      console.warn('Speech synthesis error:', e);
+  // Stop currently playing meme voice clip
+  stopCurrentMemeAudio() {
+    if (this.currentMemeAudio) {
+      try {
+        this.currentMemeAudio.pause();
+        this.currentMemeAudio.currentTime = 0;
+      } catch (e) {}
+      this.currentMemeAudio = null;
+    }
+    if (this.onMemeStateChange) {
+      this.onMemeStateChange(null, false);
     }
   }
 
-  // Viral soundboard triggers
-  triggerMemeSound(memeType) {
-    this.ensureContext();
-    switch (memeType) {
-      case 'grout_bhar_denge':
-        this.playMemeVoice("Tension mat lo saab, isme grout bhar denge!", 1.0, 1.15);
-        this.playSquelch(1.5);
-        break;
-      case 'mistri_op':
-        this.playMemeVoice("Thekedar shocked, mistri rocked! Grout OP!", 1.1, 1.2);
-        this.playFanfare();
-        break;
-      case 'kya_karega':
-        this.playMemeVoice("Bhai ye kya bana diya tune?! Arrey isme grout daal de!", 1.05, 0.95);
-        break;
-      case 'satisfying_pop':
-        this.playChime(4);
-        this.playSponge();
-        break;
-      case 'dil_toot_gaya':
-        this.playMemeVoice("Breakup ho gaya? Koi tension nahi, dil me grout bhar denge!", 1.05, 1.1);
-        break;
-      case 'titanic_meme':
-        this.playMemeVoice("Captain saab, iceberg ke gap me 5 bori grout bhar denge!", 1.05, 1.1);
-        break;
-      case 'corporate_excel':
-        this.playMemeVoice("Deadline miss ho gayi? Excel sheet ke cells me grout bhar denge!", 1.05, 1.15);
-        break;
-      case 'marksheet_pass':
-        this.playMemeVoice("Physics me zero aaya tha, ab A plus topper ban gaye!", 1.1, 1.2);
-        this.playFanfare();
-        break;
-      default:
-        this.playMemeVoice("Isme grout bhar denge!");
-        break;
+  // Real meme recorded audio clip playback
+  playMemeClip(clipId, onStatus, minCooldownMs = 800) {
+    if (this.muted) return false;
+
+    const now = performance.now();
+    if (now - this.lastMemePlayTime < minCooldownMs) {
+      return false; // Throttled to prevent spam
     }
+
+    const clip = MEME_CLIPS[clipId];
+    if (!clip) return false;
+
+    this.ensureContext();
+    this.stopCurrentMemeAudio();
+    this.lastMemePlayTime = now;
+
+    if (typeof Audio === 'undefined') {
+      return false;
+    }
+
+    try {
+      const audioPath = `/audio/memes/${clip.file}`;
+      const audio = new Audio();
+      audio.volume = 0.85;
+
+      const cleanup = () => {
+        if (this.currentMemeAudio === audio) {
+          this.currentMemeAudio = null;
+          if (this.onMemeStateChange) {
+            this.onMemeStateChange(clipId, false);
+          }
+        }
+      };
+
+      audio.onplay = () => {
+        this.currentMemeAudio = audio;
+        if (this.onMemeStateChange) {
+          this.onMemeStateChange(clipId, true);
+        }
+        if (onStatus) onStatus('playing', clip);
+      };
+
+      audio.onended = cleanup;
+      audio.onpause = cleanup;
+
+      audio.onerror = () => {
+        if (clip.fallbackFile && audio.src && audio.src.endsWith(clip.file)) {
+          audio.src = `/audio/memes/${clip.fallbackFile}`;
+          audio.play().catch(() => cleanup());
+          return;
+        }
+        cleanup();
+        console.info(`[GROUT Audio] Asset slot ready for '${clipId}'. Place audio in public/audio/memes/${clip.file}`);
+        if (onStatus) onStatus('missing', clip);
+      };
+
+      audio.src = audioPath;
+      const promise = audio.play();
+      if (promise !== undefined) {
+        promise.catch(() => {
+          cleanup();
+          if (onStatus) onStatus('blocked_or_missing', clip);
+        });
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Contextual soundboard & gameplay meme triggers
+  triggerMemeSound(memeType, minCooldownMs = 800) {
+    if (this.muted) return false;
+    this.ensureContext();
+
+    const keyMap = {
+      grout_bhar_denge: 'grout_bhar_denge',
+      mistri_op: 'mistri_op',
+      thekedar_shocked: 'mistri_op',
+      kya_karega: 'kya_bana_diya',
+      kya_bana_diya: 'kya_bana_diya',
+      sukoon_asmr: 'sukoon_asmr',
+      satisfying_pop: 'sukoon_asmr',
+      heavy_driver: 'heavy_driver',
+      paisa_barbaad: 'paisa_barbaad',
+      gajab_beizzati: 'gajab_beizzati',
+      control_uday: 'control_uday',
+      kehna_kya_chahte_ho: 'kehna_kya_chahte_ho',
+      bilkul_riks_nahi: 'bilkul_riks_nahi'
+    };
+
+    const targetClip = keyMap[memeType] || 'grout_bhar_denge';
+    const played = this.playMemeClip(targetClip, null, minCooldownMs);
+    if (!played) return false;
+
+    // Procedural sound reinforcement
+    if (memeType === 'mistri_op' || memeType === 'thekedar_shocked') {
+      this.playFanfare();
+    } else if (memeType === 'grout_bhar_denge') {
+      this.playSquelch(1.5);
+    } else if (memeType === 'satisfying_pop' || memeType === 'sukoon_asmr') {
+      this.playChime(5);
+    }
+
+    return true;
   }
 }
 
