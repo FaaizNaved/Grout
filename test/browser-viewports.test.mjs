@@ -49,13 +49,13 @@ server.listen(PORT, async () => {
   } catch (err) {
     console.error('Test execution error:', err);
     if (edgeProc) {
-      try { edgeProc.kill(); } catch {}
+      try { edgeProc.kill(); } catch { }
     }
     server.close();
     process.exit(1);
   } finally {
     if (edgeProc) {
-      try { edgeProc.kill(); } catch {}
+      try { edgeProc.kill(); } catch { }
     }
     server.close();
   }
@@ -993,7 +993,7 @@ async function runViewportTests() {
   console.log('  Saved Screenshot: test/evidence/campaign-level-5-restoration.png');
 
   // Complete Level 5 Stage 2 Grouting & Cleaning with real interactions to trigger Grand Campaign Completion Modal
-  const completionEval = await client.eval(`(() => {
+  await client.eval(`(() => {
     const engine = window.groutApp.engine;
     const canvas = window.groutApp.canvas;
     const rect = canvas.getBoundingClientRect();
@@ -1015,18 +1015,19 @@ async function runViewportTests() {
     engine.hazePatches.forEach(p => { p.cleaned = true; });
     engine.cleanedHazeCount = engine.totalHazeDeposited;
 
-    const mBefore = engine.getMetrics();
     engine.checkLevelCompletion();
+  })()`);
+  await new Promise(r => setTimeout(r, 400));
+
+  const grandFinaleState = await client.eval(`(() => {
     const modal = document.getElementById('campaignCompleteModal');
     return {
-      mBefore,
-      isCompleted: engine.isCompleted,
-      modalActive: modal ? modal.classList.contains('active') : false
+      isOpen: modal ? modal.classList.contains('active') : false
     };
   })()`);
-  console.log(`Grand Campaign Finale Modal State: Open=${completionEval.modalActive}, Metrics:`, JSON.stringify(completionEval.mBefore));
-  if (!completionEval.modalActive) {
-    throw new Error('Grand Campaign Completion modal did not open upon Level 5 completion: ' + JSON.stringify(completionEval));
+  console.log(`Grand Campaign Finale Modal State: Open=${grandFinaleState.isOpen}`);
+  if (!grandFinaleState.isOpen) {
+    throw new Error('Grand Campaign Completion modal did not open upon Level 5 completion');
   }
   await client.screenshot(path.join(EVIDENCE_DIR, 'campaign-level-5-grand-finale.png'));
   console.log('  Saved Screenshot: test/evidence/campaign-level-5-grand-finale.png');
@@ -1054,7 +1055,7 @@ async function runViewportTests() {
   console.log('ALL FIVE-LEVEL CAMPAIGN & VIEWPORT ASSERTIONS PASSED!');
   console.log('========================================\n');
 
-  try { await client.send('Page.close'); } catch {}
+  try { await client.send('Page.close'); } catch { }
   edgeProc.kill();
   process.exit(0);
 }
